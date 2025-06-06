@@ -25,12 +25,11 @@
             width: 100vw;
             height: 100vh;
             display: grid;
-            grid-template-rows: auto auto auto auto auto 1fr;
+            grid-template-rows: auto auto auto auto 1fr;
             grid-template-areas: 
                 "header"
                 "strategy"
                 "stats"
-                "performance"
                 "controls"
                 "charts";
         }
@@ -198,42 +197,6 @@
             box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
         }
 
-        .performance-panel {
-            grid-area: performance;
-            background: #1e222d;
-            padding: 15px 20px;
-            border-bottom: 1px solid #2a2e39;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-        }
-
-        .performance-item {
-            text-align: center;
-            padding: 10px;
-            background: #2a2e39;
-            border-radius: 6px;
-            border: 1px solid #363a45;
-        }
-
-        .performance-label {
-            font-size: 11px;
-            color: #787b86;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-
-        .performance-value {
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        .performance-positive { color: #4caf50; }
-        .performance-negative { color: #f44336; }
-        .performance-neutral { color: #2196f3; }
-
         .controls {
             grid-area: controls;
             background: #1e222d;
@@ -366,10 +329,11 @@
         .charts-container {
             grid-area: charts;
             display: grid;
-            grid-template-rows: 4fr 2fr 1.5fr;
-            gap: 2px;
-            padding: 2px;
+            grid-template-rows: 5fr 2fr 1.5fr;
+            gap: 3px;
+            padding: 3px;
             background: #131722;
+            min-height: 0;
         }
 
         .chart-panel {
@@ -459,60 +423,89 @@
 
         @media (max-width: 768px) {
             .dashboard {
-                grid-template-rows: auto auto auto auto auto 1fr;
+                grid-template-rows: auto auto auto auto 1fr;
             }
 
             .header {
-                flex-direction: column;
-                text-align: center;
+                padding: 10px 15px;
+            }
+
+            .title {
+                font-size: 20px;
             }
 
             .strategy-selector {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 10px;
+                padding: 10px 15px;
+                gap: 8px;
             }
 
             .strategy-dropdown {
                 min-width: auto;
+                width: 100%;
             }
 
             .stats-panel {
                 grid-template-columns: 1fr;
-                gap: 15px;
-                padding: 15px;
-            }
-
-            .performance-panel {
-                grid-template-columns: repeat(2, 1fr);
                 gap: 10px;
-                padding: 10px;
-            }
-
-            .performance-value {
-                font-size: 14px;
+                padding: 10px 15px;
             }
 
             .stat-value {
-                font-size: 20px;
+                font-size: 18px;
             }
 
             .controls {
-                flex-direction: column;
+                padding: 10px 15px;
                 gap: 10px;
             }
 
             .animation-controls {
-                flex-direction: column;
-                gap: 10px;
+                gap: 8px;
             }
 
-            .range-buttons {
-                justify-content: center;
+            .playback-controls {
+                gap: 8px;
+            }
+
+            .control-btn {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            .speed-controls {
+                padding: 6px 8px;
+                gap: 6px;
+            }
+
+            .speed-btn {
+                padding: 4px 6px;
+                font-size: 10px;
+                min-width: 28px;
+            }
+
+            .range-btn {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            .export-controls {
+                gap: 8px;
+            }
+
+            .export-btn, .comparison-mode {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+
+            .progress-info {
+                font-size: 11px;
+                padding: 6px 8px;
             }
 
             .charts-container {
-                grid-template-rows: 3fr 2fr 1.5fr;
+                grid-template-rows: 4fr 2fr 1.5fr;
+                gap: 2px;
+                padding: 2px;
             }
         }
     </style>
@@ -559,33 +552,6 @@
             </div>
         </div>
 
-        <div class="performance-panel" id="performancePanel">
-            <div class="performance-item">
-                <div class="performance-label">Total Return</div>
-                <div class="performance-value performance-neutral" id="totalReturn">0.00%</div>
-            </div>
-            <div class="performance-item">
-                <div class="performance-label">Max Drawdown</div>
-                <div class="performance-value performance-negative" id="maxDrawdown">0.00%</div>
-            </div>
-            <div class="performance-item">
-                <div class="performance-label">Sharpe Ratio</div>
-                <div class="performance-value performance-neutral" id="sharpeRatio">0.00</div>
-            </div>
-            <div class="performance-item">
-                <div class="performance-label">Win Rate</div>
-                <div class="performance-value performance-positive" id="winRate">0.00%</div>
-            </div>
-            <div class="performance-item">
-                <div class="performance-label">Total Trades</div>
-                <div class="performance-value performance-neutral" id="totalTrades">0</div>
-            </div>
-            <div class="performance-item">
-                <div class="performance-label">Avg Trade</div>
-                <div class="performance-value performance-neutral" id="avgTrade">$0.00</div>
-            </div>
-        </div>
-
         <div class="controls">
             <div class="range-buttons">
                 <button class="range-btn active" data-range="all">All</button>
@@ -594,8 +560,8 @@
                 <button class="range-btn" data-range="1D">1D</button>
             </div>
             <div class="export-controls">
-                <button class="export-btn" id="exportBtn">📊 Export Data</button>
-                <button class="comparison-mode" id="comparisonBtn">🔄 Compare Mode</button>
+                <button class="export-btn" id="exportBtn">📊 Export</button>
+                <button class="comparison-mode" id="comparisonBtn">🔄 Compare</button>
             </div>
             <div class="animation-controls">
                 <div class="playback-controls">
@@ -657,7 +623,6 @@
                 this.animationSpeed = 10;
                 this.baseInterval = 100;
                 this.comparisonMode = false;
-                this.performanceMetrics = {};
                 
                 this.initializeEventListeners();
                 this.loadDefaultData();
@@ -828,8 +793,6 @@
                 
                 this.detectSignals();
                 this.calculateFrameSkip();
-                this.calculatePerformanceMetrics();
-                this.updatePerformanceDisplay();
                 this.createCharts();
                 this.updateStats(0);
                 this.resetAnimation();
@@ -1282,117 +1245,6 @@
                 }
             }
 
-            calculatePerformanceMetrics() {
-                if (!this.currentStrategy || this.data.length === 0) return;
-                
-                const equityData = this.data.map(d => d[this.currentStrategy.equityColumn]);
-                const initialEquity = equityData[0];
-                const finalEquity = equityData[equityData.length - 1];
-                
-                // Total Return
-                const totalReturn = ((finalEquity - initialEquity) / initialEquity) * 100;
-                
-                // Max Drawdown
-                let maxDrawdown = 0;
-                let peak = equityData[0];
-                for (let i = 1; i < equityData.length; i++) {
-                    if (equityData[i] > peak) {
-                        peak = equityData[i];
-                    }
-                    const drawdown = ((peak - equityData[i]) / peak) * 100;
-                    if (drawdown > maxDrawdown) {
-                        maxDrawdown = drawdown;
-                    }
-                }
-                
-                // Calculate returns for Sharpe ratio
-                const returns = [];
-                for (let i = 1; i < equityData.length; i++) {
-                    returns.push((equityData[i] - equityData[i-1]) / equityData[i-1]);
-                }
-                
-                const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
-                const returnStd = Math.sqrt(returns.reduce((sq, n) => sq + Math.pow(n - avgReturn, 2), 0) / returns.length);
-                const sharpeRatio = returnStd > 0 ? (avgReturn / returnStd) * Math.sqrt(252 * 8) : 0; // Annualized for 3H data
-                
-                // Trade analysis
-                const trades = this.analyzeTradePerformance();
-                
-                this.performanceMetrics = {
-                    totalReturn,
-                    maxDrawdown,
-                    sharpeRatio,
-                    winRate: trades.winRate,
-                    totalTrades: trades.totalTrades,
-                    avgTrade: trades.avgTrade
-                };
-            }
-            
-            analyzeTradePerformance() {
-                if (this.signals.length === 0) {
-                    return { winRate: 0, totalTrades: 0, avgTrade: 0 };
-                }
-                
-                const trades = [];
-                let entryPrice = null;
-                let entryType = null;
-                
-                for (const signal of this.signals) {
-                    if (signal.type === 'buy' && entryPrice === null) {
-                        entryPrice = signal.price;
-                        entryType = 'long';
-                    } else if (signal.type === 'sell' && entryPrice === null) {
-                        entryPrice = signal.price;
-                        entryType = 'short';
-                    } else if (signal.type === 'sell' && entryType === 'long') {
-                        const pnl = signal.price - entryPrice;
-                        trades.push(pnl);
-                        entryPrice = null;
-                        entryType = null;
-                    } else if (signal.type === 'buy' && entryType === 'short') {
-                        const pnl = entryPrice - signal.price;
-                        trades.push(pnl);
-                        entryPrice = null;
-                        entryType = null;
-                    }
-                }
-                
-                if (trades.length === 0) {
-                    return { winRate: 0, totalTrades: 0, avgTrade: 0 };
-                }
-                
-                const winningTrades = trades.filter(trade => trade > 0).length;
-                const winRate = (winningTrades / trades.length) * 100;
-                const avgTrade = trades.reduce((a, b) => a + b, 0) / trades.length;
-                
-                return {
-                    winRate,
-                    totalTrades: trades.length,
-                    avgTrade
-                };
-            }
-            
-            updatePerformanceDisplay() {
-                if (!this.performanceMetrics) return;
-                
-                const { totalReturn, maxDrawdown, sharpeRatio, winRate, totalTrades, avgTrade } = this.performanceMetrics;
-                
-                document.getElementById('totalReturn').textContent = `${totalReturn.toFixed(2)}%`;
-                document.getElementById('totalReturn').className = `performance-value ${totalReturn >= 0 ? 'performance-positive' : 'performance-negative'}`;
-                
-                document.getElementById('maxDrawdown').textContent = `${maxDrawdown.toFixed(2)}%`;
-                
-                document.getElementById('sharpeRatio').textContent = sharpeRatio.toFixed(2);
-                document.getElementById('sharpeRatio').className = `performance-value ${sharpeRatio >= 1 ? 'performance-positive' : sharpeRatio >= 0 ? 'performance-neutral' : 'performance-negative'}`;
-                
-                document.getElementById('winRate').textContent = `${winRate.toFixed(1)}%`;
-                
-                document.getElementById('totalTrades').textContent = totalTrades.toString();
-                
-                document.getElementById('avgTrade').textContent = `$${avgTrade.toFixed(2)}`;
-                document.getElementById('avgTrade').className = `performance-value ${avgTrade >= 0 ? 'performance-positive' : 'performance-negative'}`;
-            }
-            
             exportData() {
                 if (!this.currentStrategy || this.data.length === 0) {
                     alert('No data to export. Please select a strategy first.');
