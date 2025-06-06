@@ -25,11 +25,12 @@
             width: 100vw;
             height: 100vh;
             display: grid;
-            grid-template-rows: auto auto auto auto 1fr;
+            grid-template-rows: auto auto auto auto auto 1fr;
             grid-template-areas: 
                 "header"
                 "strategy"
                 "stats"
+                "performance"
                 "controls"
                 "charts";
         }
@@ -197,6 +198,42 @@
             box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
         }
 
+        .performance-panel {
+            grid-area: performance;
+            background: #1e222d;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2a2e39;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .performance-item {
+            text-align: center;
+            padding: 10px;
+            background: #2a2e39;
+            border-radius: 6px;
+            border: 1px solid #363a45;
+        }
+
+        .performance-label {
+            font-size: 11px;
+            color: #787b86;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .performance-value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .performance-positive { color: #4caf50; }
+        .performance-negative { color: #f44336; }
+        .performance-neutral { color: #2196f3; }
+
         .controls {
             grid-area: controls;
             background: #1e222d;
@@ -329,7 +366,7 @@
         .charts-container {
             grid-area: charts;
             display: grid;
-            grid-template-rows: 3fr 2fr 1fr;
+            grid-template-rows: 4fr 2fr 1.5fr;
             gap: 2px;
             padding: 2px;
             background: #131722;
@@ -379,7 +416,52 @@
             100% { transform: rotate(360deg); }
         }
 
+        .export-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .export-btn {
+            background: #2a2e39;
+            color: #d1d4dc;
+            border: 1px solid #363a45;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .export-btn:hover {
+            background: #363a45;
+            border-color: #2962ff;
+        }
+
+        .comparison-mode {
+            background: #2a2e39;
+            color: #d1d4dc;
+            border: 1px solid #363a45;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .comparison-mode.active {
+            background: #2962ff;
+            border-color: #2962ff;
+            color: white;
+        }
+
         @media (max-width: 768px) {
+            .dashboard {
+                grid-template-rows: auto auto auto auto auto 1fr;
+            }
+
             .header {
                 flex-direction: column;
                 text-align: center;
@@ -401,6 +483,16 @@
                 padding: 15px;
             }
 
+            .performance-panel {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                padding: 10px;
+            }
+
+            .performance-value {
+                font-size: 14px;
+            }
+
             .stat-value {
                 font-size: 20px;
             }
@@ -420,7 +512,7 @@
             }
 
             .charts-container {
-                grid-template-rows: 2fr 1fr 1fr;
+                grid-template-rows: 3fr 2fr 1.5fr;
             }
         }
     </style>
@@ -467,12 +559,43 @@
             </div>
         </div>
 
+        <div class="performance-panel" id="performancePanel">
+            <div class="performance-item">
+                <div class="performance-label">Total Return</div>
+                <div class="performance-value performance-neutral" id="totalReturn">0.00%</div>
+            </div>
+            <div class="performance-item">
+                <div class="performance-label">Max Drawdown</div>
+                <div class="performance-value performance-negative" id="maxDrawdown">0.00%</div>
+            </div>
+            <div class="performance-item">
+                <div class="performance-label">Sharpe Ratio</div>
+                <div class="performance-value performance-neutral" id="sharpeRatio">0.00</div>
+            </div>
+            <div class="performance-item">
+                <div class="performance-label">Win Rate</div>
+                <div class="performance-value performance-positive" id="winRate">0.00%</div>
+            </div>
+            <div class="performance-item">
+                <div class="performance-label">Total Trades</div>
+                <div class="performance-value performance-neutral" id="totalTrades">0</div>
+            </div>
+            <div class="performance-item">
+                <div class="performance-label">Avg Trade</div>
+                <div class="performance-value performance-neutral" id="avgTrade">$0.00</div>
+            </div>
+        </div>
+
         <div class="controls">
             <div class="range-buttons">
                 <button class="range-btn active" data-range="all">All</button>
                 <button class="range-btn" data-range="1M">1M</button>
                 <button class="range-btn" data-range="1W">1W</button>
                 <button class="range-btn" data-range="1D">1D</button>
+            </div>
+            <div class="export-controls">
+                <button class="export-btn" id="exportBtn">📊 Export Data</button>
+                <button class="comparison-mode" id="comparisonBtn">🔄 Compare Mode</button>
             </div>
             <div class="animation-controls">
                 <div class="playback-controls">
@@ -533,6 +656,8 @@
                 this.selectedRange = 'all';
                 this.animationSpeed = 10;
                 this.baseInterval = 100;
+                this.comparisonMode = false;
+                this.performanceMetrics = {};
                 
                 this.initializeEventListeners();
                 this.loadDefaultData();
@@ -544,6 +669,8 @@
                 document.getElementById('playBtn').addEventListener('click', () => this.playAnimation());
                 document.getElementById('pauseBtn').addEventListener('click', () => this.pauseAnimation());
                 document.getElementById('resetBtn').addEventListener('click', () => this.resetAnimation());
+                document.getElementById('exportBtn').addEventListener('click', () => this.exportData());
+                document.getElementById('comparisonBtn').addEventListener('click', () => this.toggleComparisonMode());
                 
                 document.querySelectorAll('.range-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => this.setTimeRange(e.target.dataset.range));
@@ -701,6 +828,8 @@
                 
                 this.detectSignals();
                 this.calculateFrameSkip();
+                this.calculatePerformanceMetrics();
+                this.updatePerformanceDisplay();
                 this.createCharts();
                 this.updateStats(0);
                 this.resetAnimation();
@@ -965,16 +1094,45 @@
                 const endIndex = Math.min(this.currentFrame + 1, filteredData.length);
                 const displayData = filteredData.slice(0, endIndex);
                 
-                const exposureTrace = {
+                // Separate positive and negative exposures for better visualization
+                const positiveExposure = displayData.map(d => {
+                    const exp = d[this.currentStrategy.exposureColumn] * 100;
+                    return exp >= 0 ? exp : 0;
+                });
+                
+                const negativeExposure = displayData.map(d => {
+                    const exp = d[this.currentStrategy.exposureColumn] * 100;
+                    return exp < 0 ? Math.abs(exp) : 0;
+                });
+
+                const positiveTrace = {
                     x: displayData.map(d => d.time),
-                    y: displayData.map(d => d[this.currentStrategy.exposureColumn] * 100),
+                    y: positiveExposure,
                     type: 'scatter',
                     mode: 'lines',
-                    name: 'Exposure',
-                    line: { color: '#2196f3', width: 2 },
+                    name: 'Long Exposure',
+                    line: { color: '#4caf50', width: 2 },
                     fill: 'tozeroy',
-                    fillcolor: 'rgba(33, 150, 243, 0.2)'
+                    fillcolor: 'rgba(76, 175, 80, 0.3)',
+                    hovertemplate: 'Long: %{y:.1f}%<extra></extra>'
                 };
+
+                const negativeTrace = {
+                    x: displayData.map(d => d.time),
+                    y: negativeExposure.map(val => -val), // Display as negative
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Short Exposure',
+                    line: { color: '#f44336', width: 2 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(244, 67, 54, 0.3)',
+                    hovertemplate: 'Short: %{y:.1f}%<extra></extra>'
+                };
+
+                // Calculate dynamic range
+                const maxPositive = Math.max(...positiveExposure);
+                const maxNegative = Math.max(...negativeExposure);
+                const yRange = Math.max(maxPositive, maxNegative, 120);
 
                 const layout = {
                     title: {
@@ -990,12 +1148,20 @@
                         title: 'Exposure (%)',
                         gridcolor: '#2a2e39',
                         color: '#d1d4dc',
-                        range: [0, Math.max(120, Math.max(...displayData.map(d => d[this.currentStrategy.exposureColumn] * 100)) * 1.1)]
+                        range: [-yRange * 1.1, yRange * 1.1],
+                        zeroline: true,
+                        zerolinecolor: '#787b86',
+                        zerolinewidth: 2
                     },
                     plot_bgcolor: '#131722',
                     paper_bgcolor: '#1e222d',
                     font: { color: '#d1d4dc' },
-                    showlegend: false,
+                    showlegend: true,
+                    legend: {
+                        orientation: 'h',
+                        y: 1.02,
+                        x: 0
+                    },
                     margin: { t: 60, b: 40, l: 60, r: 40 }
                 };
 
@@ -1004,7 +1170,7 @@
                     displayModeBar: false
                 };
 
-                Plotly.newPlot('exposureChart', [exposureTrace], layout, config);
+                Plotly.newPlot('exposureChart', [positiveTrace, negativeTrace], layout, config);
             }
 
             updateStats(frameIndex) {
@@ -1017,9 +1183,22 @@
                 const newEquity = `$${currentData[this.currentStrategy.equityColumn].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 equityElement.textContent = newEquity;
                 
-                // Update exposure
+                // Update exposure with proper formatting for negative values
                 const exposureElement = document.getElementById('currentExposure');
-                const newExposure = `${(currentData[this.currentStrategy.exposureColumn] * 100).toFixed(1)}%`;
+                const exposureValue = currentData[this.currentStrategy.exposureColumn] * 100;
+                let newExposure;
+                
+                if (exposureValue > 0) {
+                    newExposure = `+${exposureValue.toFixed(1)}%`;
+                    exposureElement.style.color = '#4caf50'; // Green for long
+                } else if (exposureValue < 0) {
+                    newExposure = `${exposureValue.toFixed(1)}%`; // Already has negative sign
+                    exposureElement.style.color = '#f44336'; // Red for short
+                } else {
+                    newExposure = '0.0%';
+                    exposureElement.style.color = '#787b86'; // Gray for neutral
+                }
+                
                 exposureElement.textContent = newExposure;
                 
                 // Update price
@@ -1027,8 +1206,8 @@
                 const newPrice = `$${currentData.close.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 priceElement.textContent = newPrice;
                 
-                // Highlight when exposure is 1.2 (120%)
-                const isHighExposure = currentData[this.currentStrategy.exposureColumn] === 1.2;
+                // Highlight when exposure is 1.2 (120%) or -1.2 (-120%)
+                const isHighExposure = Math.abs(currentData[this.currentStrategy.exposureColumn]) === 1.2;
                 const exposureItem = document.getElementById('exposureItem');
                 const chartPanels = document.querySelectorAll('.chart-panel');
                 
@@ -1101,6 +1280,237 @@
                 if (this.currentStrategy) {
                     this.createCharts();
                 }
+            }
+
+            calculatePerformanceMetrics() {
+                if (!this.currentStrategy || this.data.length === 0) return;
+                
+                const equityData = this.data.map(d => d[this.currentStrategy.equityColumn]);
+                const initialEquity = equityData[0];
+                const finalEquity = equityData[equityData.length - 1];
+                
+                // Total Return
+                const totalReturn = ((finalEquity - initialEquity) / initialEquity) * 100;
+                
+                // Max Drawdown
+                let maxDrawdown = 0;
+                let peak = equityData[0];
+                for (let i = 1; i < equityData.length; i++) {
+                    if (equityData[i] > peak) {
+                        peak = equityData[i];
+                    }
+                    const drawdown = ((peak - equityData[i]) / peak) * 100;
+                    if (drawdown > maxDrawdown) {
+                        maxDrawdown = drawdown;
+                    }
+                }
+                
+                // Calculate returns for Sharpe ratio
+                const returns = [];
+                for (let i = 1; i < equityData.length; i++) {
+                    returns.push((equityData[i] - equityData[i-1]) / equityData[i-1]);
+                }
+                
+                const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+                const returnStd = Math.sqrt(returns.reduce((sq, n) => sq + Math.pow(n - avgReturn, 2), 0) / returns.length);
+                const sharpeRatio = returnStd > 0 ? (avgReturn / returnStd) * Math.sqrt(252 * 8) : 0; // Annualized for 3H data
+                
+                // Trade analysis
+                const trades = this.analyzeTradePerformance();
+                
+                this.performanceMetrics = {
+                    totalReturn,
+                    maxDrawdown,
+                    sharpeRatio,
+                    winRate: trades.winRate,
+                    totalTrades: trades.totalTrades,
+                    avgTrade: trades.avgTrade
+                };
+            }
+            
+            analyzeTradePerformance() {
+                if (this.signals.length === 0) {
+                    return { winRate: 0, totalTrades: 0, avgTrade: 0 };
+                }
+                
+                const trades = [];
+                let entryPrice = null;
+                let entryType = null;
+                
+                for (const signal of this.signals) {
+                    if (signal.type === 'buy' && entryPrice === null) {
+                        entryPrice = signal.price;
+                        entryType = 'long';
+                    } else if (signal.type === 'sell' && entryPrice === null) {
+                        entryPrice = signal.price;
+                        entryType = 'short';
+                    } else if (signal.type === 'sell' && entryType === 'long') {
+                        const pnl = signal.price - entryPrice;
+                        trades.push(pnl);
+                        entryPrice = null;
+                        entryType = null;
+                    } else if (signal.type === 'buy' && entryType === 'short') {
+                        const pnl = entryPrice - signal.price;
+                        trades.push(pnl);
+                        entryPrice = null;
+                        entryType = null;
+                    }
+                }
+                
+                if (trades.length === 0) {
+                    return { winRate: 0, totalTrades: 0, avgTrade: 0 };
+                }
+                
+                const winningTrades = trades.filter(trade => trade > 0).length;
+                const winRate = (winningTrades / trades.length) * 100;
+                const avgTrade = trades.reduce((a, b) => a + b, 0) / trades.length;
+                
+                return {
+                    winRate,
+                    totalTrades: trades.length,
+                    avgTrade
+                };
+            }
+            
+            updatePerformanceDisplay() {
+                if (!this.performanceMetrics) return;
+                
+                const { totalReturn, maxDrawdown, sharpeRatio, winRate, totalTrades, avgTrade } = this.performanceMetrics;
+                
+                document.getElementById('totalReturn').textContent = `${totalReturn.toFixed(2)}%`;
+                document.getElementById('totalReturn').className = `performance-value ${totalReturn >= 0 ? 'performance-positive' : 'performance-negative'}`;
+                
+                document.getElementById('maxDrawdown').textContent = `${maxDrawdown.toFixed(2)}%`;
+                
+                document.getElementById('sharpeRatio').textContent = sharpeRatio.toFixed(2);
+                document.getElementById('sharpeRatio').className = `performance-value ${sharpeRatio >= 1 ? 'performance-positive' : sharpeRatio >= 0 ? 'performance-neutral' : 'performance-negative'}`;
+                
+                document.getElementById('winRate').textContent = `${winRate.toFixed(1)}%`;
+                
+                document.getElementById('totalTrades').textContent = totalTrades.toString();
+                
+                document.getElementById('avgTrade').textContent = `$${avgTrade.toFixed(2)}`;
+                document.getElementById('avgTrade').className = `performance-value ${avgTrade >= 0 ? 'performance-positive' : 'performance-negative'}`;
+            }
+            
+            exportData() {
+                if (!this.currentStrategy || this.data.length === 0) {
+                    alert('No data to export. Please select a strategy first.');
+                    return;
+                }
+                
+                const csvContent = this.generateCSVContent();
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                
+                if (link.download !== undefined) {
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', `${this.currentStrategy.name}_analysis.csv`);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            }
+            
+            generateCSVContent() {
+                const headers = ['Time', 'Price', 'Equity', 'Exposure', 'Signal'];
+                const rows = [headers.join(',')];
+                
+                for (let i = 0; i < this.data.length; i++) {
+                    const row = this.data[i];
+                    const signal = this.signals.find(s => s.index === i);
+                    
+                    rows.push([
+                        row.time.toISOString(),
+                        row.close.toFixed(2),
+                        row[this.currentStrategy.equityColumn].toFixed(2),
+                        (row[this.currentStrategy.exposureColumn] * 100).toFixed(1),
+                        signal ? signal.type : ''
+                    ].join(','));
+                }
+                
+                return rows.join('\n');
+            }
+            
+            toggleComparisonMode() {
+                this.comparisonMode = !this.comparisonMode;
+                const btn = document.getElementById('comparisonBtn');
+                
+                if (this.comparisonMode) {
+                    btn.classList.add('active');
+                    btn.textContent = '✓ Comparing';
+                    this.enableComparisonMode();
+                } else {
+                    btn.classList.remove('active');
+                    btn.textContent = '🔄 Compare Mode';
+                    this.disableComparisonMode();
+                }
+            }
+            
+            enableComparisonMode() {
+                // In comparison mode, show all strategies on equity chart
+                if (this.strategies.length > 1) {
+                    this.createComparisonEquityChart();
+                }
+            }
+            
+            disableComparisonMode() {
+                // Return to single strategy view
+                this.createCharts();
+            }
+            
+            createComparisonEquityChart() {
+                const filteredData = this.getFilteredData();
+                const endIndex = Math.min(this.currentFrame + 1, filteredData.length);
+                const displayData = filteredData.slice(0, endIndex);
+                
+                const traces = this.strategies.map((strategy, index) => {
+                    const colors = ['#4caf50', '#2196f3', '#ff9800', '#9c27b0', '#f44336', '#00bcd4'];
+                    return {
+                        x: displayData.map(d => d.time),
+                        y: displayData.map(d => d[strategy.equityColumn]),
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: strategy.name,
+                        line: { color: colors[index % colors.length], width: 2 }
+                    };
+                });
+                
+                const layout = {
+                    title: {
+                        text: 'Strategy Comparison - Equity Curves',
+                        font: { color: '#ffffff', size: 16 }
+                    },
+                    xaxis: {
+                        type: 'date',
+                        gridcolor: '#2a2e39',
+                        color: '#d1d4dc'
+                    },
+                    yaxis: {
+                        title: 'Equity ($)',
+                        gridcolor: '#2a2e39',
+                        color: '#d1d4dc'
+                    },
+                    plot_bgcolor: '#131722',
+                    paper_bgcolor: '#1e222d',
+                    font: { color: '#d1d4dc' },
+                    showlegend: true,
+                    legend: {
+                        orientation: 'h',
+                        y: 1.02,
+                        x: 0
+                    },
+                    margin: { t: 60, b: 40, l: 60, r: 40 }
+                };
+                
+                const config = {
+                    responsive: true,
+                    displayModeBar: false
+                };
+                
+                Plotly.newPlot('equityChart', traces, layout, config);
             }
         }
 
