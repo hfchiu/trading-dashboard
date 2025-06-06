@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradingView-Style Strategy Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #131722;
+            color: #d1d4dc;
+            overflow-x: hidden;
+        }
+
+        .dashboard {
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto auto auto 1fr;
+            grid-template-areas: 
+                "header"
+                "stats"
+                "controls"
+                "charts";
+        }
+
+        .header {
+            grid-area: header;
+            background: #1e222d;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2a2e39;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .timeframe-badge {
+            background: #2962ff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            background: #2962ff;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .file-input-label:hover {
+            background: #1e53e5;
+            transform: translateY(-1px);
+        }
+
+        .stats-panel {
+            grid-area: stats;
+            background: #1e222d;
+            padding: 25px;
+            border-bottom: 1px solid #2a2e39;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 40px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 20px;
+            background: #2a2e39;
+            border-radius: 8px;
+            border: 2px solid transparent;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: #787b86;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+        }
+
+        .stat-equity { 
+            color: #4caf50; 
+            border-color: rgba(76, 175, 80, 0.3);
+        }
+        .stat-exposure { 
+            color: #2196f3; 
+            border-color: rgba(33, 150, 243, 0.3);
+        }
+        .stat-price { 
+            color: #ff9800; 
+            border-color: rgba(255, 152, 0, 0.3);
+        }
+
+        .exposure-highlight {
+            background: rgba(255, 193, 7, 0.1) !important;
+            border: 2px solid #ffc107 !important;
+        }
+
+        .chart-panel.exposure-highlight {
+            background: #2a2e39;
+            border: 3px solid #ffc107;
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+        }
+
+        .controls {
+            grid-area: controls;
+            background: #1e222d;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2a2e39;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .range-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .range-btn {
+            background: #2a2e39;
+            color: #d1d4dc;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .range-btn:hover, .range-btn.active {
+            background: #2962ff;
+            color: white;
+        }
+
+        .animation-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .speed-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #2a2e39;
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+
+        .speed-label {
+            font-size: 12px;
+            color: #787b86;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 5px;
+        }
+
+        .speed-btn {
+            background: transparent;
+            color: #d1d4dc;
+            border: 1px solid #363a45;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            min-width: 35px;
+        }
+
+        .speed-btn:hover, .speed-btn.active {
+            background: #2962ff;
+            border-color: #2962ff;
+            color: white;
+        }
+
+        .control-btn {
+            background: #2a2e39;
+            color: #d1d4dc;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-btn:hover {
+            background: #363a45;
+        }
+
+        .control-btn.play {
+            background: #4caf50;
+            color: white;
+        }
+
+        .control-btn.play:hover {
+            background: #45a049;
+        }
+
+        .control-btn.pause {
+            background: #ff9800;
+            color: white;
+        }
+
+        .control-btn.pause:hover {
+            background: #f57c00;
+        }
+
+        .progress-info {
+            font-size: 13px;
+            color: #787b86;
+            white-space: nowrap;
+            background: #2a2e39;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        .charts-container {
+            grid-area: charts;
+            display: grid;
+            grid-template-rows: 3fr 2fr 1fr;
+            gap: 2px;
+            padding: 2px;
+            background: #131722;
+        }
+
+        .chart-panel {
+            background: #1e222d;
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .chart-content {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            font-size: 16px;
+            color: #787b86;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: #1e222d;
+        }
+
+        .spinner {
+            border: 3px solid #2a2e39;
+            border-top: 3px solid #2962ff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .stat-item.pulse {
+            animation: pulse 0.6s ease-in-out;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .stats-panel {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+
+            .stat-value {
+                font-size: 32px;
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .animation-controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .range-buttons {
+                justify-content: center;
+            }
+
+            .charts-container {
+                grid-template-rows: 2fr 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <div class="title">
+                📊 TradingView Strategy Dashboard
+                <span class="timeframe-badge">3H</span>
+            </div>
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <input type="file" id="csvFile" class="file-input" accept=".csv">
+                    <label for="csvFile" class="file-input-label">
+                        📁 Upload CSV
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stat-item stat-equity" id="equityItem">
+                <div class="stat-label">Live Equity</div>
+                <div class="stat-value" id="liveEquity">$10,000</div>
+            </div>
+            <div class="stat-item stat-exposure" id="exposureItem">
+                <div class="stat-label">Current Exposure</div>
+                <div class="stat-value" id="currentExposure">100%</div>
+            </div>
+            <div class="stat-item stat-price" id="priceItem">
+                <div class="stat-label">Live Price</div>
+                <div class="stat-value" id="livePrice">$0.00</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="range-buttons">
+                <button class="range-btn active" data-range="all">All</button>
+                <button class="range-btn" data-range="1M">1M</button>
+                <button class="range-btn" data-range="1W">1W</button>
+                <button class="range-btn" data-range="1D">1D</button>
+            </div>
+            <div class="animation-controls">
+                <div class="playback-controls">
+                    <button class="control-btn play" id="playBtn">▶ Play</button>
+                    <button class="control-btn" id="pauseBtn">⏸ Pause</button>
+                    <button class="control-btn" id="resetBtn">⏹ Reset</button>
+                </div>
+                <div class="speed-controls">
+                    <span class="speed-label">Speed</span>
+                    <button class="speed-btn" data-speed="0.5">0.5x</button>
+                    <button class="speed-btn" data-speed="1">1x</button>
+                    <button class="speed-btn" data-speed="2">2x</button>
+                    <button class="speed-btn" data-speed="5">5x</button>
+                    <button class="speed-btn active" data-speed="10">10x</button>
+                    <button class="speed-btn" data-speed="15">15x</button>
+                    <button class="speed-btn" data-speed="20">20x</button>
+                </div>
+                <div class="progress-info" id="progressInfo">Frame 0 / 0</div>
+            </div>
+        </div>
+
+        <div class="charts-container">
+            <div class="chart-panel">
+                <div class="chart-content" id="candlestickChart"></div>
+                <div class="loading" id="loading1">
+                    <div class="spinner"></div>
+                    Upload CSV file to begin
+                </div>
+            </div>
+            <div class="chart-panel">
+                <div class="chart-content" id="equityChart"></div>
+                <div class="loading" id="loading2">
+                    <div class="spinner"></div>
+                    Equity curve will appear here
+                </div>
+            </div>
+            <div class="chart-panel">
+                <div class="chart-content" id="exposureChart"></div>
+                <div class="loading" id="loading3">
+                    <div class="spinner"></div>
+                    Exposure levels will appear here
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class TradingDashboard {
+            constructor() {
+                this.data = [];
+                this.signals = [];
+                this.currentFrame = 0;
+                this.isPlaying = false;
+                this.animationId = null;
+                this.frameSkip = 1;
+                this.selectedRange = 'all';
+                this.animationSpeed = 10;
+                this.baseInterval = 100;
+                
+                this.initializeEventListeners();
+                this.loadDefaultData();
+            }
+
+            initializeEventListeners() {
+                document.getElementById('csvFile').addEventListener('change', (e) => this.handleFileUpload(e));
+                document.getElementById('playBtn').addEventListener('click', () => this.playAnimation());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.pauseAnimation());
+                document.getElementById('resetBtn').addEventListener('click', () => this.resetAnimation());
+                
+                document.querySelectorAll('.range-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.setTimeRange(e.target.dataset.range));
+                });
+
+                document.querySelectorAll('.speed-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.setAnimationSpeed(parseFloat(e.target.dataset.speed)));
+                });
+
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    if (this.data.length > 0) {
+                        setTimeout(() => this.resizeCharts(), 100);
+                    }
+                });
+            }
+
+            setAnimationSpeed(speed) {
+                this.animationSpeed = speed;
+                document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector(`[data-speed="${speed}"]`).classList.add('active');
+            }
+
+            async loadDefaultData() {
+                try {
+                    const response = await fetch('tv.csv');
+                    const csvText = await response.text();
+                    this.parseCSV(csvText);
+                } catch (error) {
+                    console.log('Default CSV not found, waiting for upload...');
+                }
+            }
+
+            handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.parseCSV(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            parseCSV(csvText) {
+                const lines = csvText.trim().split('\n');
+                const headers = lines[0].split(',');
+                
+                this.data = lines.slice(1).map(line => {
+                    const values = line.split(',');
+                    return {
+                        time: new Date(values[0]),
+                        open: parseFloat(values[1]),
+                        high: parseFloat(values[2]),
+                        low: parseFloat(values[3]),
+                        close: parseFloat(values[4]),
+                        equity: parseFloat(values[5]),
+                        exposure: parseFloat(values[6])
+                    };
+                });
+
+                this.detectSignals();
+                this.calculateFrameSkip();
+                this.hideLoadingScreens();
+                this.createCharts();
+                this.updateStats(0);
+            }
+
+            hideLoadingScreens() {
+                document.getElementById('loading1').style.display = 'none';
+                document.getElementById('loading2').style.display = 'none';
+                document.getElementById('loading3').style.display = 'none';
+            }
+
+            detectSignals() {
+                this.signals = [];
+                for (let i = 1; i < this.data.length; i++) {
+                    const prev = this.data[i - 1];
+                    const curr = this.data[i];
+                    
+                    if (curr.exposure > prev.exposure) {
+                        this.signals.push({
+                            index: i,
+                            type: 'buy',
+                            price: curr.close,
+                            time: curr.time
+                        });
+                    } else if (curr.exposure < prev.exposure) {
+                        this.signals.push({
+                            index: i,
+                            type: 'sell',
+                            price: curr.close,
+                            time: curr.time
+                        });
+                    }
+                }
+            }
+
+            calculateFrameSkip() {
+                const totalFrames = this.data.length;
+                if (totalFrames > 5000) {
+                    this.frameSkip = Math.ceil(totalFrames / 2000);
+                } else if (totalFrames > 2000) {
+                    this.frameSkip = Math.ceil(totalFrames / 1000);
+                } else {
+                    this.frameSkip = 1;
+                }
+            }
+
+            getFilteredData() {
+                if (this.selectedRange === 'all') return this.data;
+                
+                const now = new Date(this.data[this.data.length - 1].time);
+                let startDate;
+                
+                switch (this.selectedRange) {
+                    case '1D':
+                        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                        break;
+                    case '1W':
+                        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                        break;
+                    case '1M':
+                        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                        break;
+                    default:
+                        return this.data;
+                }
+                
+                return this.data.filter(d => d.time >= startDate);
+            }
+
+            createCharts() {
+                this.createCandlestickChart();
+                this.createEquityChart();
+                this.createExposureChart();
+            }
+
+            resizeCharts() {
+                Plotly.Plots.resize('candlestickChart');
+                Plotly.Plots.resize('equityChart');
+                Plotly.Plots.resize('exposureChart');
+            }
+
+            createCandlestickChart() {
+                const filteredData = this.getFilteredData();
+                const endIndex = Math.min(this.currentFrame + 1, filteredData.length);
+                const displayData = filteredData.slice(0, endIndex);
+                
+                const candlestickTrace = {
+                    x: displayData.map(d => d.time),
+                    open: displayData.map(d => d.open),
+                    high: displayData.map(d => d.high),
+                    low: displayData.map(d => d.low),
+                    close: displayData.map(d => d.close),
+                    type: 'candlestick',
+                    name: 'Price',
+                    increasing: { line: { color: '#4caf50' } },
+                    decreasing: { line: { color: '#f44336' } }
+                };
+
+                const buySignals = this.signals.filter(s => s.type === 'buy' && s.index < endIndex);
+                const sellSignals = this.signals.filter(s => s.type === 'sell' && s.index < endIndex);
+
+                // Filter signals to reduce overlap - only show signals that are at least 10 data points apart
+                const filterOverlappingSignals = (signals) => {
+                    if (signals.length <= 1) return signals;
+                    
+                    const filtered = [signals[0]];
+                    for (let i = 1; i < signals.length; i++) {
+                        const lastSignal = filtered[filtered.length - 1];
+                        if (signals[i].index - lastSignal.index >= 10) {
+                            filtered.push(signals[i]);
+                        }
+                    }
+                    return filtered;
+                };
+
+                const filteredBuySignals = filterOverlappingSignals(buySignals);
+                const filteredSellSignals = filterOverlappingSignals(sellSignals);
+
+                const buyTrace = {
+                    x: filteredBuySignals.map(s => s.time),
+                    y: filteredBuySignals.map(s => s.price * 0.985),
+                    mode: 'markers+text',
+                    type: 'scatter',
+                    name: 'Buy Signal',
+                    text: filteredBuySignals.map(() => 'BUY'),
+                    textposition: 'bottom center',
+                    textfont: {
+                        size: 16,
+                        color: '#ffffff',
+                        family: 'Arial Black'
+                    },
+                    marker: {
+                        symbol: 'triangle-up',
+                        size: 25,
+                        color: '#4caf50',
+                        line: {
+                            color: '#ffffff',
+                            width: 3
+                        }
+                    }
+                };
+
+                const sellTrace = {
+                    x: filteredSellSignals.map(s => s.time),
+                    y: filteredSellSignals.map(s => s.price * 1.015),
+                    mode: 'markers+text',
+                    type: 'scatter',
+                    name: 'Sell Signal',
+                    text: filteredSellSignals.map(() => 'SELL'),
+                    textposition: 'top center',
+                    textfont: {
+                        size: 16,
+                        color: '#ffffff',
+                        family: 'Arial Black'
+                    },
+                    marker: {
+                        symbol: 'triangle-down',
+                        size: 25,
+                        color: '#f44336',
+                        line: {
+                            color: '#ffffff',
+                            width: 3
+                        }
+                    }
+                };
+
+                const layout = {
+                    title: {
+                        text: 'Price Chart with Trading Signals',
+                        font: { color: '#ffffff', size: 16 }
+                    },
+                    xaxis: {
+                        type: 'date',
+                        gridcolor: '#2a2e39',
+                        color: '#d1d4dc'
+                    },
+                    yaxis: {
+                        title: 'Price',
+                        gridcolor: '#2a2e39',
+                        color: '#d1d4dc'
+                    },
+                    plot_bgcolor: '#131722',
+                    paper_bgcolor: '#1e222d',
+                    font: { color: '#d1d4dc' },
+                    showlegend: true,
+                    legend: {
+                        orientation: 'h',
+                        y: 1.02,
+                        x: 0
+                    },
+                    margin: { t: 60, b: 40, l: 60, r: 40 }
+                };
+
+                const config = {
+                    responsive: true,
+                    displayModeBar: true,
+                    modeBarButtonsToRemove: ['lasso2d', 'select2d']
+                };
+
+                Plotly.newPlot('candlestickChart', [candlestickTrace, buyTrace, sellTrace], layout, config);
+            }
+
+            createEquityChart() {
+                const filteredData = this.getFilteredData();
+                const endIndex = Math.min(this.currentFrame + 1, filteredData.length);
+                const displayData = filteredData.slice(0, endIndex);
+                
+                const equityTrace = {
+                    x: displayData.map(d => d.time),
+                    y: displayData.map(d => d.equity),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Equity',
+                    line: { color: '#4caf50', width: 2 },
+                    fill: 'tonexty',
+                    fillcolor: 'rgba(76, 175, 80, 0.1)'
+                };
+
+                const layout = {
+                    title: {
+                        text: 'Equity Curve',
+                        font: { color: '#ffffff', size: 16 }
+                    },
+                    xaxis: {
+                        type: 'date',
+                        gridcolor: '#2a2e39',
+                        color: '#d1d4dc'
+                    },
+                    yaxis: {
+                        title: 'Equity ($)',
+                        gridcolor: '#2a2e39',
+                        color: '#d1d4dc'
+                    },
+                    plot_bgcolor: '#131722',
+                    paper_bgcolor: '#1e222d',
+                    font: { color: '#d1d4dc' },
+                    showlegend: false,
+                    margin: { t: 60, b: 40, l: 60, r: 40 }
+                };
+
+                const config = {
+                    responsive: true,
+                    displayModeBar: false
+                };
+
+                Plotly.newPlot('equityChart', [equityTrace], layout, config);
+            }
+
+            createExposureChart() {
+                const filteredData = this.getFilteredData();
+                const endIndex = Math.min(this.currentFrame + 1, filteredData.length);
+                const displayData = filteredData.slice(0, endIndex);
+                
+                const exposureTrace = {
+                    x: displayData.map(d => d.time),
+                    y: displayData.map(d => d.exposure * 100),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Exposure',
+                    line: { color: '#2196f3', width: 2 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(33, 150, 243, 0.2)'
+                };
+
+                const layout = {
+                    title: {
+                        text: 'Exposure Level',
+                        font: { color: '#ffffff', size: 16 }
+                    },
+                    xaxis: {
+                        type: 'date',
+                        gridcolor: '#2a2e39',
+                        color: '#d1d4dc'
+                    },
+                    yaxis: {
+                        title: 'Exposure (%)',
+                        gridcolor: '#2a2e39',
+                        color: '#d1d4dc',
+                        range: [0, Math.max(120, Math.max(...displayData.map(d => d.exposure * 100)) * 1.1)]
+                    },
+                    plot_bgcolor: '#131722',
+                    paper_bgcolor: '#1e222d',
+                    font: { color: '#d1d4dc' },
+                    showlegend: false,
+                    margin: { t: 60, b: 40, l: 60, r: 40 }
+                };
+
+                const config = {
+                    responsive: true,
+                    displayModeBar: false
+                };
+
+                Plotly.newPlot('exposureChart', [exposureTrace], layout, config);
+            }
+
+            updateStats(frameIndex) {
+                if (frameIndex >= this.data.length) return;
+                
+                const currentData = this.data[frameIndex];
+                
+                // Update equity
+                const equityElement = document.getElementById('liveEquity');
+                const newEquity = `$${currentData.equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                equityElement.textContent = newEquity;
+                
+                // Update exposure
+                const exposureElement = document.getElementById('currentExposure');
+                const newExposure = `${(currentData.exposure * 100).toFixed(1)}%`;
+                exposureElement.textContent = newExposure;
+                
+                // Update price
+                const priceElement = document.getElementById('livePrice');
+                const newPrice = `$${currentData.close.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                priceElement.textContent = newPrice;
+                
+                // Highlight when exposure is 1.2 (120%)
+                const isHighExposure = currentData.exposure === 1.2;
+                const exposureItem = document.getElementById('exposureItem');
+                const chartPanels = document.querySelectorAll('.chart-panel');
+                
+                if (isHighExposure) {
+                    exposureItem.classList.add('exposure-highlight');
+                    chartPanels.forEach(panel => panel.classList.add('exposure-highlight'));
+                } else {
+                    exposureItem.classList.remove('exposure-highlight');
+                    chartPanels.forEach(panel => panel.classList.remove('exposure-highlight'));
+                }
+                
+                document.getElementById('progressInfo').textContent = 
+                    `Frame ${frameIndex + 1} / ${this.data.length}`;
+            }
+
+            playAnimation() {
+                if (this.isPlaying) return;
+                
+                this.isPlaying = true;
+                document.getElementById('playBtn').classList.add('play');
+                document.getElementById('playBtn').innerHTML = '⏸ Playing';
+                
+                const animate = () => {
+                    if (!this.isPlaying) return;
+                    
+                    if (this.currentFrame < this.data.length - 1) {
+                        this.currentFrame += this.frameSkip;
+                        if (this.currentFrame >= this.data.length) {
+                            this.currentFrame = this.data.length - 1;
+                        }
+                        
+                        this.createCharts();
+                        this.updateStats(this.currentFrame);
+                        
+                        const interval = this.baseInterval / this.animationSpeed;
+                        this.animationId = setTimeout(animate, interval);
+                    } else {
+                        this.pauseAnimation();
+                    }
+                };
+                
+                animate();
+            }
+
+            pauseAnimation() {
+                this.isPlaying = false;
+                if (this.animationId) {
+                    clearTimeout(this.animationId);
+                    this.animationId = null;
+                }
+                
+                document.getElementById('playBtn').classList.remove('play');
+                document.getElementById('playBtn').innerHTML = '▶ Play';
+            }
+
+            resetAnimation() {
+                this.pauseAnimation();
+                this.currentFrame = 0;
+                this.createCharts();
+                this.updateStats(0);
+            }
+
+            setTimeRange(range) {
+                document.querySelectorAll('.range-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector(`[data-range="${range}"]`).classList.add('active');
+                
+                this.selectedRange = range;
+                this.createCharts();
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new TradingDashboard();
+        });
+    </script>
+</body>
+</html> 
