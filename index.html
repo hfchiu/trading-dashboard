@@ -25,9 +25,10 @@
             width: 100vw;
             height: 100vh;
             display: grid;
-            grid-template-rows: auto auto auto 1fr;
+            grid-template-rows: auto auto auto auto 1fr;
             grid-template-areas: 
                 "header"
+                "strategy"
                 "stats"
                 "controls"
                 "charts";
@@ -97,6 +98,47 @@
         .file-input-label:hover {
             background: #1e53e5;
             transform: translateY(-1px);
+        }
+
+        .strategy-selector {
+            grid-area: strategy;
+            background: #1e222d;
+            padding: 15px 20px;
+            border-bottom: 1px solid #2a2e39;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .strategy-label {
+            font-size: 14px;
+            color: #d1d4dc;
+            font-weight: 600;
+        }
+
+        .strategy-dropdown {
+            background: #2a2e39;
+            color: #d1d4dc;
+            border: 1px solid #363a45;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            min-width: 200px;
+        }
+
+        .strategy-dropdown:focus {
+            outline: none;
+            border-color: #2962ff;
+        }
+
+        .strategy-info {
+            background: #2a2e39;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #787b86;
         }
 
         .stats-panel {
@@ -337,20 +379,20 @@
             100% { transform: rotate(360deg); }
         }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        .stat-item.pulse {
-            animation: pulse 0.6s ease-in-out;
-        }
-
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
                 text-align: center;
+            }
+
+            .strategy-selector {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .strategy-dropdown {
+                min-width: auto;
             }
 
             .stats-panel {
@@ -387,7 +429,7 @@
     <div class="dashboard">
         <div class="header">
             <div class="title">
-                📊 TradingView Strategy Dashboard
+                📊 Multi-Strategy Trading Dashboard
                 <span class="timeframe-badge">3H</span>
             </div>
             <div class="upload-section">
@@ -397,6 +439,16 @@
                         📁 Upload CSV
                     </label>
                 </div>
+            </div>
+        </div>
+
+        <div class="strategy-selector">
+            <span class="strategy-label">Strategy:</span>
+            <select id="strategySelect" class="strategy-dropdown">
+                <option value="">Select a strategy...</option>
+            </select>
+            <div class="strategy-info" id="strategyInfo">
+                Upload CSV to see available strategies
             </div>
         </div>
 
@@ -471,6 +523,8 @@
         class TradingDashboard {
             constructor() {
                 this.data = [];
+                this.strategies = [];
+                this.currentStrategy = null;
                 this.signals = [];
                 this.currentFrame = 0;
                 this.isPlaying = false;
@@ -486,6 +540,7 @@
 
             initializeEventListeners() {
                 document.getElementById('csvFile').addEventListener('change', (e) => this.handleFileUpload(e));
+                document.getElementById('strategySelect').addEventListener('change', (e) => this.handleStrategyChange(e));
                 document.getElementById('playBtn').addEventListener('click', () => this.playAnimation());
                 document.getElementById('pauseBtn').addEventListener('click', () => this.pauseAnimation());
                 document.getElementById('resetBtn').addEventListener('click', () => this.resetAnimation());
@@ -514,11 +569,19 @@
 
             async loadDefaultData() {
                 try {
-                    const response = await fetch('tv.csv');
+                    // Try to load multi-strategy file first
+                    const response = await fetch('tv with multi strats.csv');
                     const csvText = await response.text();
                     this.parseCSV(csvText);
                 } catch (error) {
-                    console.log('Default CSV not found, waiting for upload...');
+                    try {
+                        // Fallback to single strategy file
+                        const response = await fetch('tv.csv');
+                        const csvText = await response.text();
+                        this.parseCSV(csvText);
+                    } catch (error2) {
+                        console.log('No default CSV found, waiting for upload...');
+                    }
                 }
             }
 
@@ -537,24 +600,110 @@
                 const lines = csvText.trim().split('\n');
                 const headers = lines[0].split(',');
                 
+                // Parse basic OHLC data
                 this.data = lines.slice(1).map(line => {
                     const values = line.split(',');
-                    return {
+                    const row = {
                         time: new Date(values[0]),
                         open: parseFloat(values[1]),
                         high: parseFloat(values[2]),
                         low: parseFloat(values[3]),
-                        close: parseFloat(values[4]),
-                        equity: parseFloat(values[5]),
-                        exposure: parseFloat(values[6])
+                        close: parseFloat(values[4])
                     };
+                    
+                    // Add all other columns dynamically
+                    for (let i = 5; i < headers.length; i++) {
+                        row[headers[i]] = parseFloat(values[i]);
+                    }
+                    
+                    return row;
                 });
 
+                // Detect strategies
+                this.detectStrategies(headers);
+                this.populateStrategyDropdown();
+                this.hideLoadingScreens();
+                
+                // Auto-select first strategy if available
+                if (this.strategies.length > 0) {
+                    this.currentStrategy = this.strategies[0];
+                    document.getElementById('strategySelect').value = this.currentStrategy.name;
+                    this.handleStrategyChange();
+                }
+            }
+
+            detectStrategies(headers) {
+                this.strategies = [];
+                const strategyMap = new Map();
+                
+                // Group equity and exposure columns by strategy name
+                for (let i = 5; i < headers.length; i++) {
+                    const header = headers[i];
+                    
+                    if (header.includes('Exposure')) {
+                        const strategyName = header.replace(' Exposure', '').trim();
+                        if (!strategyMap.has(strategyName)) {
+                            strategyMap.set(strategyName, {});
+                        }
+                        strategyMap.get(strategyName).exposureColumn = header;
+                    } else {
+                        // Assume it's an equity column
+                        const strategyName = header.trim();
+                        if (!strategyMap.has(strategyName)) {
+                            strategyMap.set(strategyName, {});
+                        }
+                        strategyMap.get(strategyName).equityColumn = header;
+                    }
+                }
+                
+                // Create strategy objects
+                for (const [name, columns] of strategyMap) {
+                    if (columns.equityColumn && columns.exposureColumn) {
+                        this.strategies.push({
+                            name: name,
+                            equityColumn: columns.equityColumn,
+                            exposureColumn: columns.exposureColumn
+                        });
+                    }
+                }
+                
+                // Fallback for single strategy files
+                if (this.strategies.length === 0 && headers.includes('Equity') && headers.includes('Exposure')) {
+                    this.strategies.push({
+                        name: 'Default Strategy',
+                        equityColumn: 'Equity',
+                        exposureColumn: 'Exposure'
+                    });
+                }
+            }
+
+            populateStrategyDropdown() {
+                const select = document.getElementById('strategySelect');
+                select.innerHTML = '<option value="">Select a strategy...</option>';
+                
+                this.strategies.forEach(strategy => {
+                    const option = document.createElement('option');
+                    option.value = strategy.name;
+                    option.textContent = strategy.name;
+                    select.appendChild(option);
+                });
+                
+                document.getElementById('strategyInfo').textContent = 
+                    `${this.strategies.length} strategies available`;
+            }
+
+            handleStrategyChange(event) {
+                const selectedName = event ? event.target.value : this.currentStrategy?.name;
+                if (!selectedName) return;
+                
+                this.currentStrategy = this.strategies.find(s => s.name === selectedName);
+                if (!this.currentStrategy) return;
+                
                 this.detectSignals();
                 this.calculateFrameSkip();
-                this.hideLoadingScreens();
                 this.createCharts();
                 this.updateStats(0);
+                this.resetAnimation();
             }
 
             hideLoadingScreens() {
@@ -564,19 +713,24 @@
             }
 
             detectSignals() {
+                if (!this.currentStrategy) return;
+                
                 this.signals = [];
                 for (let i = 1; i < this.data.length; i++) {
                     const prev = this.data[i - 1];
                     const curr = this.data[i];
                     
-                    if (curr.exposure > prev.exposure) {
+                    const prevExposure = prev[this.currentStrategy.exposureColumn];
+                    const currExposure = curr[this.currentStrategy.exposureColumn];
+                    
+                    if (currExposure > prevExposure) {
                         this.signals.push({
                             index: i,
                             type: 'buy',
                             price: curr.close,
                             time: curr.time
                         });
-                    } else if (curr.exposure < prev.exposure) {
+                    } else if (currExposure < prevExposure) {
                         this.signals.push({
                             index: i,
                             type: 'sell',
@@ -622,6 +776,8 @@
             }
 
             createCharts() {
+                if (!this.currentStrategy) return;
+                
                 this.createCandlestickChart();
                 this.createEquityChart();
                 this.createExposureChart();
@@ -679,17 +835,17 @@
                     text: filteredBuySignals.map(() => 'BUY'),
                     textposition: 'bottom center',
                     textfont: {
-                        size: 16,
+                        size: 10,
                         color: '#ffffff',
                         family: 'Arial Black'
                     },
                     marker: {
                         symbol: 'triangle-up',
-                        size: 25,
+                        size: 16,
                         color: '#4caf50',
                         line: {
                             color: '#ffffff',
-                            width: 3
+                            width: 2
                         }
                     }
                 };
@@ -703,24 +859,24 @@
                     text: filteredSellSignals.map(() => 'SELL'),
                     textposition: 'top center',
                     textfont: {
-                        size: 16,
+                        size: 10,
                         color: '#ffffff',
                         family: 'Arial Black'
                     },
                     marker: {
                         symbol: 'triangle-down',
-                        size: 25,
+                        size: 16,
                         color: '#f44336',
                         line: {
                             color: '#ffffff',
-                            width: 3
+                            width: 2
                         }
                     }
                 };
 
                 const layout = {
                     title: {
-                        text: 'Price Chart with Trading Signals',
+                        text: `Price Chart with Trading Signals - ${this.currentStrategy.name}`,
                         font: { color: '#ffffff', size: 16 }
                     },
                     xaxis: {
@@ -755,13 +911,15 @@
             }
 
             createEquityChart() {
+                if (!this.currentStrategy) return;
+                
                 const filteredData = this.getFilteredData();
                 const endIndex = Math.min(this.currentFrame + 1, filteredData.length);
                 const displayData = filteredData.slice(0, endIndex);
                 
                 const equityTrace = {
                     x: displayData.map(d => d.time),
-                    y: displayData.map(d => d.equity),
+                    y: displayData.map(d => d[this.currentStrategy.equityColumn]),
                     type: 'scatter',
                     mode: 'lines',
                     name: 'Equity',
@@ -772,7 +930,7 @@
 
                 const layout = {
                     title: {
-                        text: 'Equity Curve',
+                        text: `Equity Curve - ${this.currentStrategy.name}`,
                         font: { color: '#ffffff', size: 16 }
                     },
                     xaxis: {
@@ -801,13 +959,15 @@
             }
 
             createExposureChart() {
+                if (!this.currentStrategy) return;
+                
                 const filteredData = this.getFilteredData();
                 const endIndex = Math.min(this.currentFrame + 1, filteredData.length);
                 const displayData = filteredData.slice(0, endIndex);
                 
                 const exposureTrace = {
                     x: displayData.map(d => d.time),
-                    y: displayData.map(d => d.exposure * 100),
+                    y: displayData.map(d => d[this.currentStrategy.exposureColumn] * 100),
                     type: 'scatter',
                     mode: 'lines',
                     name: 'Exposure',
@@ -818,7 +978,7 @@
 
                 const layout = {
                     title: {
-                        text: 'Exposure Level',
+                        text: `Exposure Level - ${this.currentStrategy.name}`,
                         font: { color: '#ffffff', size: 16 }
                     },
                     xaxis: {
@@ -830,7 +990,7 @@
                         title: 'Exposure (%)',
                         gridcolor: '#2a2e39',
                         color: '#d1d4dc',
-                        range: [0, Math.max(120, Math.max(...displayData.map(d => d.exposure * 100)) * 1.1)]
+                        range: [0, Math.max(120, Math.max(...displayData.map(d => d[this.currentStrategy.exposureColumn] * 100)) * 1.1)]
                     },
                     plot_bgcolor: '#131722',
                     paper_bgcolor: '#1e222d',
@@ -848,18 +1008,18 @@
             }
 
             updateStats(frameIndex) {
-                if (frameIndex >= this.data.length) return;
+                if (frameIndex >= this.data.length || !this.currentStrategy) return;
                 
                 const currentData = this.data[frameIndex];
                 
                 // Update equity
                 const equityElement = document.getElementById('liveEquity');
-                const newEquity = `$${currentData.equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                const newEquity = `$${currentData[this.currentStrategy.equityColumn].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 equityElement.textContent = newEquity;
                 
                 // Update exposure
                 const exposureElement = document.getElementById('currentExposure');
-                const newExposure = `${(currentData.exposure * 100).toFixed(1)}%`;
+                const newExposure = `${(currentData[this.currentStrategy.exposureColumn] * 100).toFixed(1)}%`;
                 exposureElement.textContent = newExposure;
                 
                 // Update price
@@ -868,7 +1028,7 @@
                 priceElement.textContent = newPrice;
                 
                 // Highlight when exposure is 1.2 (120%)
-                const isHighExposure = currentData.exposure === 1.2;
+                const isHighExposure = currentData[this.currentStrategy.exposureColumn] === 1.2;
                 const exposureItem = document.getElementById('exposureItem');
                 const chartPanels = document.querySelectorAll('.chart-panel');
                 
@@ -885,7 +1045,7 @@
             }
 
             playAnimation() {
-                if (this.isPlaying) return;
+                if (this.isPlaying || !this.currentStrategy) return;
                 
                 this.isPlaying = true;
                 document.getElementById('playBtn').classList.add('play');
@@ -927,8 +1087,10 @@
             resetAnimation() {
                 this.pauseAnimation();
                 this.currentFrame = 0;
-                this.createCharts();
-                this.updateStats(0);
+                if (this.currentStrategy) {
+                    this.createCharts();
+                    this.updateStats(0);
+                }
             }
 
             setTimeRange(range) {
@@ -936,7 +1098,9 @@
                 document.querySelector(`[data-range="${range}"]`).classList.add('active');
                 
                 this.selectedRange = range;
-                this.createCharts();
+                if (this.currentStrategy) {
+                    this.createCharts();
+                }
             }
         }
 
