@@ -423,148 +423,170 @@
 
         @media (max-width: 768px) {
             .dashboard {
-                grid-template-rows: auto auto auto auto 1fr;
+                grid-template-rows: auto auto auto 1fr;
                 height: 100vh;
                 overflow: hidden;
             }
 
             .header {
-                padding: 5px 10px;
+                padding: 3px 8px;
             }
 
             .title {
-                font-size: 16px;
+                font-size: 14px;
             }
 
             .timeframe-badge {
-                font-size: 10px;
-                padding: 2px 6px;
+                font-size: 9px;
+                padding: 1px 4px;
             }
 
             .file-input-label {
-                padding: 8px 12px;
-                font-size: 12px;
+                padding: 6px 10px;
+                font-size: 11px;
             }
 
             .strategy-selector {
-                padding: 5px 10px;
-                gap: 5px;
+                padding: 3px 8px;
+                gap: 4px;
             }
 
             .strategy-label {
-                font-size: 12px;
+                font-size: 11px;
             }
 
             .strategy-dropdown {
-                padding: 6px 8px;
-                font-size: 12px;
+                padding: 4px 6px;
+                font-size: 11px;
                 min-width: auto;
                 width: 100%;
             }
 
             .strategy-info {
-                font-size: 10px;
-                padding: 4px 8px;
+                font-size: 9px;
+                padding: 3px 6px;
             }
 
             .stats-panel {
                 grid-template-columns: 1fr 1fr 1fr;
-                gap: 5px;
-                padding: 5px 10px;
+                gap: 3px;
+                padding: 3px 8px;
             }
 
             .stat-item {
-                padding: 6px;
+                padding: 4px;
             }
 
             .stat-value {
-                font-size: 14px;
+                font-size: 12px;
             }
 
             .stat-label {
-                font-size: 9px;
-                margin-bottom: 3px;
+                font-size: 8px;
+                margin-bottom: 2px;
             }
 
             .controls {
-                padding: 5px 10px;
-                gap: 5px;
-                flex-direction: column;
+                padding: 3px 8px;
+                gap: 3px;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                align-items: center;
             }
 
             .range-buttons {
                 order: 1;
                 display: flex;
-                justify-content: center;
-                gap: 3px;
+                gap: 2px;
+                flex: 1;
             }
 
             .export-controls {
                 order: 2;
-                gap: 5px;
+                gap: 3px;
+                display: none; /* Hide export controls on mobile to save space */
             }
 
             .animation-controls {
                 order: 3;
-                gap: 5px;
-                flex-direction: column;
+                gap: 3px;
+                flex-direction: row;
                 align-items: center;
+                flex: 2;
+                justify-content: flex-end;
             }
 
             .playback-controls {
-                gap: 5px;
-            }
-
-            .control-btn {
-                padding: 5px 8px;
-                font-size: 10px;
-            }
-
-            .speed-controls {
-                padding: 3px 5px;
                 gap: 3px;
             }
 
-            .speed-label {
+            .control-btn {
+                padding: 3px 6px;
                 font-size: 9px;
+            }
+
+            .speed-controls {
+                padding: 2px 4px;
+                gap: 2px;
+            }
+
+            .speed-label {
+                font-size: 8px;
             }
 
             .speed-btn {
-                padding: 2px 4px;
-                font-size: 8px;
-                min-width: 20px;
+                padding: 1px 3px;
+                font-size: 7px;
+                min-width: 18px;
             }
 
             .range-btn {
-                padding: 5px 8px;
-                font-size: 10px;
+                padding: 3px 6px;
+                font-size: 9px;
+                flex: 1;
             }
 
             .export-btn, .comparison-mode {
-                padding: 4px 6px;
-                font-size: 9px;
+                padding: 3px 5px;
+                font-size: 8px;
             }
 
             .progress-info {
-                font-size: 9px;
-                padding: 3px 5px;
+                font-size: 8px;
+                padding: 2px 4px;
             }
 
             .charts-container {
-                grid-template-rows: 2fr 1fr 1fr;
-                gap: 2px;
-                padding: 2px;
+                grid-template-rows: 3fr 1.5fr 1.5fr;
+                gap: 1px;
+                padding: 1px;
                 min-height: 0;
                 height: 100%;
             }
 
             .chart-panel {
-                min-height: 120px;
+                min-height: 100px;
             }
 
             .chart-content {
                 height: 100%;
                 width: 100%;
+            }
+
+            /* Hide some elements on very small screens */
+            @media (max-width: 480px) {
+                .strategy-info {
+                    display: none;
+                }
+                
+                .speed-controls {
+                    display: none;
+                }
+                
+                .progress-info {
+                    display: none;
+                }
             }
         }
     </style>
