@@ -424,87 +424,147 @@
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-rows: auto auto auto auto 1fr;
+                height: 100vh;
+                overflow: hidden;
             }
 
             .header {
-                padding: 8px 15px;
+                padding: 5px 10px;
             }
 
             .title {
-                font-size: 18px;
-            }
-
-            .strategy-selector {
-                padding: 8px 15px;
-                gap: 8px;
-            }
-
-            .stats-panel {
-                grid-template-columns: 1fr;
-                gap: 8px;
-                padding: 8px 15px;
-            }
-
-            .stat-value {
                 font-size: 16px;
             }
 
-            .stat-label {
+            .timeframe-badge {
                 font-size: 10px;
+                padding: 2px 6px;
+            }
+
+            .file-input-label {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            .strategy-selector {
+                padding: 5px 10px;
+                gap: 5px;
+            }
+
+            .strategy-label {
+                font-size: 12px;
+            }
+
+            .strategy-dropdown {
+                padding: 6px 8px;
+                font-size: 12px;
+                min-width: auto;
+                width: 100%;
+            }
+
+            .strategy-info {
+                font-size: 10px;
+                padding: 4px 8px;
+            }
+
+            .stats-panel {
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 5px;
+                padding: 5px 10px;
+            }
+
+            .stat-item {
+                padding: 6px;
+            }
+
+            .stat-value {
+                font-size: 14px;
+            }
+
+            .stat-label {
+                font-size: 9px;
+                margin-bottom: 3px;
             }
 
             .controls {
-                padding: 8px 15px;
-                gap: 8px;
+                padding: 5px 10px;
+                gap: 5px;
+                flex-direction: column;
             }
 
-            .animation-controls {
-                gap: 6px;
-            }
-
-            .playback-controls {
-                gap: 6px;
-            }
-
-            .control-btn {
-                padding: 6px 10px;
-                font-size: 11px;
-            }
-
-            .speed-controls {
-                padding: 4px 6px;
-                gap: 4px;
-            }
-
-            .speed-btn {
-                padding: 3px 5px;
-                font-size: 9px;
-                min-width: 24px;
-            }
-
-            .range-btn {
-                padding: 6px 10px;
-                font-size: 11px;
+            .range-buttons {
+                order: 1;
+                display: flex;
+                justify-content: center;
+                gap: 3px;
             }
 
             .export-controls {
-                gap: 6px;
+                order: 2;
+                gap: 5px;
             }
 
-            .export-btn, .comparison-mode {
+            .animation-controls {
+                order: 3;
+                gap: 5px;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .playback-controls {
+                gap: 5px;
+            }
+
+            .control-btn {
                 padding: 5px 8px;
                 font-size: 10px;
             }
 
-            .progress-info {
+            .speed-controls {
+                padding: 3px 5px;
+                gap: 3px;
+            }
+
+            .speed-label {
+                font-size: 9px;
+            }
+
+            .speed-btn {
+                padding: 2px 4px;
+                font-size: 8px;
+                min-width: 20px;
+            }
+
+            .range-btn {
+                padding: 5px 8px;
                 font-size: 10px;
+            }
+
+            .export-btn, .comparison-mode {
                 padding: 4px 6px;
+                font-size: 9px;
+            }
+
+            .progress-info {
+                font-size: 9px;
+                padding: 3px 5px;
             }
 
             .charts-container {
-                grid-template-rows: 5fr 3fr 3fr;
-                gap: 4px;
-                padding: 4px;
+                grid-template-rows: 2fr 1fr 1fr;
+                gap: 2px;
+                padding: 2px;
+                min-height: 0;
+                height: 100%;
+            }
+
+            .chart-panel {
+                min-height: 120px;
+            }
+
+            .chart-content {
+                height: 100%;
+                width: 100%;
             }
         }
     </style>
