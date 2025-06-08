@@ -629,6 +629,7 @@
             <div class="export-controls">
                 <button class="export-btn" id="exportBtn">📊 Export</button>
                 <button class="comparison-mode" id="comparisonBtn">🔄 Compare</button>
+                <button class="comparison-mode" id="inLLFilterBtn">🔍 inLL=1 Only</button>
             </div>
             <div class="animation-controls">
                 <div class="playback-controls">
@@ -691,6 +692,8 @@
                 this.baseInterval = 50; // Reduced for smoother animation
                 this.comparisonMode = false;
                 this.preCalculatedData = null; // Cache for pre-calculated chart data
+                this.inLLFilter = false; // New filter for inLL=1 frames
+                this.filteredFrames = []; // Array of frame indices where inLL=1
                 
                 this.initializeEventListeners();
                 this.loadDefaultData();
@@ -704,6 +707,7 @@
                 document.getElementById('resetBtn').addEventListener('click', () => this.resetAnimation());
                 document.getElementById('exportBtn').addEventListener('click', () => this.exportData());
                 document.getElementById('comparisonBtn').addEventListener('click', () => this.toggleComparisonMode());
+                document.getElementById('inLLFilterBtn').addEventListener('click', () => this.toggleInLLFilter());
                 
                 document.querySelectorAll('.range-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => this.setTimeRange(e.target.dataset.range));
@@ -1355,6 +1359,11 @@
                 const exposureItem = document.getElementById('exposureItem');
                 const chartPanels = document.querySelectorAll('.chart-panel');
                 
+                // Debug logging
+                if (shouldHighlight) {
+                    console.log(`Highlighting at frame ${frameIndex}, inLL value:`, inLLValue);
+                }
+                
                 if (shouldHighlight) {
                     exposureItem.classList.add('exposure-highlight');
                     chartPanels.forEach(panel => panel.classList.add('exposure-highlight'));
@@ -1363,12 +1372,20 @@
                     chartPanels.forEach(panel => panel.classList.remove('exposure-highlight'));
                 }
                 
+                // Update progress display based on filter mode
+                const totalFrames = this.getTotalFrames();
+                const currentDisplayFrame = this.inLLFilter ? this.currentFrame + 1 : frameIndex + 1;
+                const totalDisplayFrames = this.inLLFilter ? totalFrames : this.data.length;
+                
                 document.getElementById('progressInfo').textContent = 
-                    `Frame ${frameIndex + 1} / ${this.data.length}`;
+                    `Frame ${currentDisplayFrame} / ${totalDisplayFrames}${this.inLLFilter ? ' (inLL=1)' : ''}`;
             }
 
             playAnimation() {
                 if (this.isPlaying || !this.currentStrategy) return;
+                
+                const totalFrames = this.getTotalFrames();
+                if (totalFrames === 0) return;
                 
                 this.isPlaying = true;
                 document.getElementById('playBtn').classList.add('play');
@@ -1384,14 +1401,14 @@
                         return;
                     }
                     
-                    if (this.currentFrame < this.data.length - 1) {
+                    if (this.currentFrame < totalFrames - 1) {
                         this.currentFrame += this.frameSkip;
-                        if (this.currentFrame >= this.data.length) {
-                            this.currentFrame = this.data.length - 1;
+                        if (this.currentFrame >= totalFrames) {
+                            this.currentFrame = totalFrames - 1;
                         }
                         
                         // Update stats every frame for smooth progress
-                        this.updateStats(this.currentFrame);
+                        this.updateStats(this.getCurrentFrameIndex());
                         
                         // Update charts less frequently for performance
                         frameCount++;
@@ -1425,7 +1442,7 @@
                 this.currentFrame = 0;
                 if (this.currentStrategy) {
                     this.createCharts();
-                    this.updateStats(0);
+                    this.updateStats(this.getCurrentFrameIndex());
                 }
             }
 
@@ -1557,6 +1574,53 @@
                 };
                 
                 Plotly.newPlot('equityChart', traces, layout, config);
+            }
+
+            toggleInLLFilter() {
+                this.inLLFilter = !this.inLLFilter;
+                const btn = document.getElementById('inLLFilterBtn');
+                
+                if (this.inLLFilter) {
+                    btn.classList.add('active');
+                    btn.textContent = '✓ inLL=1 Filter';
+                    this.buildFilteredFrames();
+                } else {
+                    btn.classList.remove('active');
+                    btn.textContent = '🔍 inLL=1 Only';
+                    this.filteredFrames = [];
+                }
+                
+                this.resetAnimation();
+                if (this.currentStrategy) {
+                    this.detectSignals();
+                    this.calculateFrameSkip();
+                    this.preCalculateChartData();
+                    this.createCharts();
+                    this.updateStats(this.getCurrentFrameIndex());
+                }
+            }
+
+            buildFilteredFrames() {
+                this.filteredFrames = [];
+                for (let i = 0; i < this.data.length; i++) {
+                    const inLLValue = this.data[i].inLL;
+                    if (inLLValue === 1 || inLLValue === '1' || inLLValue === 1.0) {
+                        this.filteredFrames.push(i);
+                    }
+                }
+                console.log(`Found ${this.filteredFrames.length} frames where inLL=1`);
+            }
+
+            getCurrentFrameIndex() {
+                if (this.inLLFilter && this.filteredFrames.length > 0) {
+                    const filterIndex = Math.min(this.currentFrame, this.filteredFrames.length - 1);
+                    return this.filteredFrames[filterIndex];
+                }
+                return this.currentFrame;
+            }
+
+            getTotalFrames() {
+                return this.inLLFilter ? this.filteredFrames.length : this.data.length;
             }
         }
 
