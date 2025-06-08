@@ -762,6 +762,19 @@
                 });
             }
 
+            checkInLLValue(value) {
+                // Comprehensive check for inLL = 1
+                if (value === 1) return true;
+                if (value === '1') return true;
+                if (value === 1.0) return true;
+                if (value === '1.0') return true;
+                if (String(value).trim() === '1') return true;
+                if (String(value).trim() === '1.0') return true;
+                if (parseFloat(value) === 1) return true;
+                
+                return false;
+            }
+
             setAnimationSpeed(speed) {
                 this.animationSpeed = speed;
                 document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('active'));
@@ -806,8 +819,14 @@
                 const lines = csvText.trim().split('\n');
                 const headers = lines[0].split(',');
                 
+                console.log('CSV Headers:', headers);
+                
+                // Find inLL column index
+                const inLLIndex = headers.findIndex(h => h.trim().toLowerCase() === 'inll');
+                console.log('inLL column index:', inLLIndex);
+                
                 // Parse basic OHLC data
-                this.data = lines.slice(1).map(line => {
+                this.data = lines.slice(1).map((line, index) => {
                     const values = line.split(',');
                     const row = {
                         time: new Date(values[0]),
@@ -819,19 +838,58 @@
                     
                     // Add all other columns dynamically
                     for (let i = 5; i < headers.length; i++) {
-                        const header = headers[i];
+                        const header = headers[i].trim();
                         const value = values[i];
                         
-                        // Special handling for inLL column to ensure it's a number
-                        if (header === 'inLL') {
-                            row[header] = parseFloat(value) || 0;
+                        // Special handling for inLL column
+                        if (header.toLowerCase() === 'inll') {
+                            // Try multiple parsing approaches
+                            let parsedValue = value;
+                            if (value !== undefined && value !== null && value !== '') {
+                                // Remove any whitespace and try to parse
+                                const cleanValue = String(value).trim();
+                                if (cleanValue === '1' || cleanValue === '1.0') {
+                                    parsedValue = 1;
+                                } else if (cleanValue === '0' || cleanValue === '0.0') {
+                                    parsedValue = 0;
+                                } else {
+                                    parsedValue = parseFloat(cleanValue) || 0;
+                                }
+                            } else {
+                                parsedValue = 0;
+                            }
+                            
+                            row[header] = parsedValue;
+                            
+                            // Debug logging for first few rows
+                            if (index < 5) {
+                                console.log(`Row ${index}: inLL raw="${value}", parsed=${parsedValue}, type=${typeof parsedValue}`);
+                            }
                         } else {
-                            row[header] = parseFloat(value);
+                            row[header] = parseFloat(value) || 0;
                         }
                     }
                     
                     return row;
                 });
+
+                console.log('Sample data rows with inLL:', this.data.slice(0, 5).map(d => ({
+                    time: d.time,
+                    inLL: d.inLL,
+                    inLLType: typeof d.inLL
+                })));
+
+                // Analyze inLL values in the dataset
+                const inLLValues = this.data.map(d => d.inLL).filter(v => v !== undefined);
+                const uniqueInLLValues = [...new Set(inLLValues)];
+                const inLLCount = inLLValues.length;
+                const inLL1Count = inLLValues.filter(v => this.checkInLLValue(v)).length;
+                
+                console.log('inLL Analysis:');
+                console.log('- Total rows with inLL:', inLLCount);
+                console.log('- Unique inLL values:', uniqueInLLValues);
+                console.log('- Rows where inLL=1:', inLL1Count);
+                console.log('- Sample inLL values:', inLLValues.slice(0, 20));
 
                 // Detect strategies
                 this.detectStrategies(headers);
@@ -1392,14 +1450,19 @@
                 
                 // Update LL Period indicator
                 const inLLValue = currentData.inLL;
-                const isLLPeriod = inLLValue === 1 || inLLValue === '1' || inLLValue === 1.0;
+                const isLLPeriod = this.checkInLLValue(inLLValue);
                 const llPeriodItem = document.getElementById('llPeriodItem');
                 const llPeriodStatus = document.getElementById('llPeriodStatus');
+                
+                // Debug logging for every frame to see what's happening
+                if (frameIndex % 100 === 0) { // Log every 100th frame to avoid spam
+                    console.log(`Frame ${frameIndex}: inLL raw=${inLLValue}, type=${typeof inLLValue}, isLLPeriod=${isLLPeriod}`);
+                }
                 
                 if (isLLPeriod) {
                     llPeriodItem.classList.add('ll-period-active');
                     llPeriodStatus.textContent = 'ACTIVE';
-                    console.log(`LL Period ACTIVE at frame ${frameIndex}, inLL value:`, inLLValue);
+                    console.log(`LL Period ACTIVE at frame ${frameIndex}, inLL value:`, inLLValue, typeof inLLValue);
                 } else {
                     llPeriodItem.classList.remove('ll-period-active');
                     llPeriodStatus.textContent = 'INACTIVE';
