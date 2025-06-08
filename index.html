@@ -147,7 +147,7 @@
             padding: 5px 15px;
             border-bottom: 1px solid #2a2e39;
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
             gap: 10px;
         }
 
@@ -184,6 +184,10 @@
         .stat-price { 
             color: #ff9800; 
             border-color: rgba(255, 152, 0, 0.3);
+        }
+        .stat-ll { 
+            color: #9c27b0; 
+            border-color: rgba(156, 39, 176, 0.3);
         }
 
         .exposure-highlight {
@@ -421,6 +425,30 @@
             color: white;
         }
 
+        .ll-period-active {
+            background: rgba(255, 193, 7, 0.2) !important;
+            border: 3px solid #ffc107 !important;
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.5) !important;
+            animation: llPulse 2s infinite;
+        }
+
+        .ll-period-active .stat-value {
+            color: #ffc107 !important;
+            font-weight: 900 !important;
+            text-shadow: 0 0 10px rgba(255, 193, 7, 0.8);
+        }
+
+        @keyframes llPulse {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(255, 193, 7, 0.8);
+                transform: scale(1.02);
+            }
+        }
+
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-rows: auto auto auto auto 1fr;
@@ -469,7 +497,7 @@
             }
 
             .stats-panel {
-                grid-template-columns: 1fr 1fr 1fr;
+                grid-template-columns: 1fr 1fr 1fr 1fr;
                 gap: 3px;
                 padding: 3px 5px;
             }
@@ -573,6 +601,15 @@
                 .speed-controls {
                     display: none;
                 }
+                
+                .stats-panel {
+                    grid-template-columns: 1fr 1fr;
+                    grid-template-rows: 1fr 1fr;
+                }
+                
+                .stat-item:nth-child(3), .stat-item:nth-child(4) {
+                    grid-column: span 1;
+                }
             }
         }
     </style>
@@ -617,6 +654,10 @@
                 <div class="stat-label">Live Price</div>
                 <div class="stat-value" id="livePrice">$0.00</div>
             </div>
+            <div class="stat-item stat-ll" id="llPeriodItem">
+                <div class="stat-label">LL Period</div>
+                <div class="stat-value" id="llPeriodStatus">INACTIVE</div>
+            </div>
         </div>
 
         <div class="controls">
@@ -629,7 +670,6 @@
             <div class="export-controls">
                 <button class="export-btn" id="exportBtn">📊 Export</button>
                 <button class="comparison-mode" id="comparisonBtn">🔄 Compare</button>
-                <button class="comparison-mode" id="inLLFilterBtn">🔍 inLL=1 Only</button>
             </div>
             <div class="animation-controls">
                 <div class="playback-controls">
@@ -692,8 +732,6 @@
                 this.baseInterval = 50; // Reduced for smoother animation
                 this.comparisonMode = false;
                 this.preCalculatedData = null; // Cache for pre-calculated chart data
-                this.inLLFilter = false; // New filter for inLL=1 frames
-                this.filteredFrames = []; // Array of frame indices where inLL=1
                 
                 this.initializeEventListeners();
                 this.loadDefaultData();
@@ -707,7 +745,6 @@
                 document.getElementById('resetBtn').addEventListener('click', () => this.resetAnimation());
                 document.getElementById('exportBtn').addEventListener('click', () => this.exportData());
                 document.getElementById('comparisonBtn').addEventListener('click', () => this.toggleComparisonMode());
-                document.getElementById('inLLFilterBtn').addEventListener('click', () => this.toggleInLLFilter());
                 
                 document.querySelectorAll('.range-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => this.setTimeRange(e.target.dataset.range));
@@ -1353,16 +1390,25 @@
                 const newPrice = `$${currentData.close.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 priceElement.textContent = newPrice;
                 
-                // Highlight when inLL is 1 (check both number and string values)
+                // Update LL Period indicator
                 const inLLValue = currentData.inLL;
-                const shouldHighlight = inLLValue === 1 || inLLValue === '1' || inLLValue === 1.0;
+                const isLLPeriod = inLLValue === 1 || inLLValue === '1' || inLLValue === 1.0;
+                const llPeriodItem = document.getElementById('llPeriodItem');
+                const llPeriodStatus = document.getElementById('llPeriodStatus');
+                
+                if (isLLPeriod) {
+                    llPeriodItem.classList.add('ll-period-active');
+                    llPeriodStatus.textContent = 'ACTIVE';
+                    console.log(`LL Period ACTIVE at frame ${frameIndex}, inLL value:`, inLLValue);
+                } else {
+                    llPeriodItem.classList.remove('ll-period-active');
+                    llPeriodStatus.textContent = 'INACTIVE';
+                }
+                
+                // Keep the existing exposure highlighting for charts
+                const shouldHighlight = isLLPeriod;
                 const exposureItem = document.getElementById('exposureItem');
                 const chartPanels = document.querySelectorAll('.chart-panel');
-                
-                // Debug logging
-                if (shouldHighlight) {
-                    console.log(`Highlighting at frame ${frameIndex}, inLL value:`, inLLValue);
-                }
                 
                 if (shouldHighlight) {
                     exposureItem.classList.add('exposure-highlight');
@@ -1372,20 +1418,13 @@
                     chartPanels.forEach(panel => panel.classList.remove('exposure-highlight'));
                 }
                 
-                // Update progress display based on filter mode
-                const totalFrames = this.getTotalFrames();
-                const currentDisplayFrame = this.inLLFilter ? this.currentFrame + 1 : frameIndex + 1;
-                const totalDisplayFrames = this.inLLFilter ? totalFrames : this.data.length;
-                
+                // Update progress display
                 document.getElementById('progressInfo').textContent = 
-                    `Frame ${currentDisplayFrame} / ${totalDisplayFrames}${this.inLLFilter ? ' (inLL=1)' : ''}`;
+                    `Frame ${frameIndex + 1} / ${this.data.length}`;
             }
 
             playAnimation() {
                 if (this.isPlaying || !this.currentStrategy) return;
-                
-                const totalFrames = this.getTotalFrames();
-                if (totalFrames === 0) return;
                 
                 this.isPlaying = true;
                 document.getElementById('playBtn').classList.add('play');
@@ -1401,14 +1440,14 @@
                         return;
                     }
                     
-                    if (this.currentFrame < totalFrames - 1) {
+                    if (this.currentFrame < this.data.length - 1) {
                         this.currentFrame += this.frameSkip;
-                        if (this.currentFrame >= totalFrames) {
-                            this.currentFrame = totalFrames - 1;
+                        if (this.currentFrame >= this.data.length) {
+                            this.currentFrame = this.data.length - 1;
                         }
                         
                         // Update stats every frame for smooth progress
-                        this.updateStats(this.getCurrentFrameIndex());
+                        this.updateStats(this.currentFrame);
                         
                         // Update charts less frequently for performance
                         frameCount++;
@@ -1442,7 +1481,7 @@
                 this.currentFrame = 0;
                 if (this.currentStrategy) {
                     this.createCharts();
-                    this.updateStats(this.getCurrentFrameIndex());
+                    this.updateStats(0);
                 }
             }
 
@@ -1576,51 +1615,12 @@
                 Plotly.newPlot('equityChart', traces, layout, config);
             }
 
-            toggleInLLFilter() {
-                this.inLLFilter = !this.inLLFilter;
-                const btn = document.getElementById('inLLFilterBtn');
-                
-                if (this.inLLFilter) {
-                    btn.classList.add('active');
-                    btn.textContent = '✓ inLL=1 Filter';
-                    this.buildFilteredFrames();
-                } else {
-                    btn.classList.remove('active');
-                    btn.textContent = '🔍 inLL=1 Only';
-                    this.filteredFrames = [];
-                }
-                
-                this.resetAnimation();
-                if (this.currentStrategy) {
-                    this.detectSignals();
-                    this.calculateFrameSkip();
-                    this.preCalculateChartData();
-                    this.createCharts();
-                    this.updateStats(this.getCurrentFrameIndex());
-                }
-            }
-
-            buildFilteredFrames() {
-                this.filteredFrames = [];
-                for (let i = 0; i < this.data.length; i++) {
-                    const inLLValue = this.data[i].inLL;
-                    if (inLLValue === 1 || inLLValue === '1' || inLLValue === 1.0) {
-                        this.filteredFrames.push(i);
-                    }
-                }
-                console.log(`Found ${this.filteredFrames.length} frames where inLL=1`);
-            }
-
             getCurrentFrameIndex() {
-                if (this.inLLFilter && this.filteredFrames.length > 0) {
-                    const filterIndex = Math.min(this.currentFrame, this.filteredFrames.length - 1);
-                    return this.filteredFrames[filterIndex];
-                }
                 return this.currentFrame;
             }
 
             getTotalFrames() {
-                return this.inLLFilter ? this.filteredFrames.length : this.data.length;
+                return this.data.length;
             }
         }
 
