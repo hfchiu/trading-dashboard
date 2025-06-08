@@ -25,11 +25,12 @@
             width: 100vw;
             height: 100vh;
             display: grid;
-            grid-template-rows: auto auto auto 1fr;
+            grid-template-rows: auto auto auto auto 1fr;
             grid-template-areas: 
                 "header"
                 "strategy"
                 "stats"
+                "controls"
                 "charts";
         }
 
@@ -197,20 +198,15 @@
         }
 
         .controls {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(30, 34, 45, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 8px 15px;
-            border-top: 1px solid #2a2e39;
+            grid-area: controls;
+            background: #1e222d;
+            padding: 5px 15px;
+            border-bottom: 1px solid #2a2e39;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 10px;
-            z-index: 1000;
         }
 
         .range-buttons {
@@ -336,7 +332,6 @@
             grid-template-rows: 8fr 5fr 5fr;
             gap: 6px;
             padding: 6px;
-            padding-bottom: 60px; /* Space for fixed controls */
             background: #131722;
             min-height: 0;
         }
@@ -428,7 +423,7 @@
 
         @media (max-width: 768px) {
             .dashboard {
-                grid-template-rows: auto auto 1fr;
+                grid-template-rows: auto auto auto auto 1fr;
                 height: 100vh;
                 overflow: hidden;
             }
@@ -474,24 +469,31 @@
             }
 
             .stats-panel {
-                display: none; /* Hide stats panel on mobile to maximize chart space */
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 3px;
+                padding: 3px 5px;
+            }
+
+            .stat-item {
+                padding: 3px;
+            }
+
+            .stat-value {
+                font-size: 12px;
+            }
+
+            .stat-label {
+                font-size: 8px;
+                margin-bottom: 2px;
             }
 
             .controls {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: rgba(30, 34, 45, 0.95);
-                backdrop-filter: blur(10px);
                 padding: 2px 5px;
                 gap: 2px;
                 flex-direction: row;
                 flex-wrap: wrap;
                 justify-content: space-between;
                 align-items: center;
-                z-index: 1000;
-                border-top: 1px solid #2a2e39;
             }
 
             .range-buttons {
@@ -545,14 +547,14 @@
             }
 
             .progress-info {
-                display: none; /* Hide progress info on mobile */
+                font-size: 7px;
+                padding: 1px 3px;
             }
 
             .charts-container {
                 grid-template-rows: 4fr 2fr 2fr;
                 gap: 1px;
                 padding: 1px;
-                padding-bottom: 35px; /* Space for fixed controls */
                 min-height: 0;
                 height: 100%;
             }
@@ -570,10 +572,6 @@
             @media (max-width: 480px) {
                 .speed-controls {
                     display: none;
-                }
-                
-                .charts-container {
-                    padding-bottom: 30px;
                 }
             }
         }
@@ -1262,32 +1260,41 @@
                 document.getElementById('playBtn').classList.add('play');
                 document.getElementById('playBtn').innerHTML = '⏸ Playing';
                 
-                const animate = () => {
+                let lastTime = performance.now();
+                const targetInterval = this.baseInterval / this.animationSpeed;
+                
+                const animate = (currentTime) => {
                     if (!this.isPlaying) return;
                     
-                    if (this.currentFrame < this.data.length - 1) {
-                        this.currentFrame += this.frameSkip;
-                        if (this.currentFrame >= this.data.length) {
-                            this.currentFrame = this.data.length - 1;
+                    const deltaTime = currentTime - lastTime;
+                    
+                    if (deltaTime >= targetInterval) {
+                        if (this.currentFrame < this.data.length - 1) {
+                            this.currentFrame += this.frameSkip;
+                            if (this.currentFrame >= this.data.length) {
+                                this.currentFrame = this.data.length - 1;
+                            }
+                            
+                            this.createCharts();
+                            this.updateStats(this.currentFrame);
+                            
+                            lastTime = currentTime;
+                        } else {
+                            this.pauseAnimation();
+                            return;
                         }
-                        
-                        this.createCharts();
-                        this.updateStats(this.currentFrame);
-                        
-                        const interval = this.baseInterval / this.animationSpeed;
-                        this.animationId = setTimeout(animate, interval);
-                    } else {
-                        this.pauseAnimation();
                     }
+                    
+                    this.animationId = requestAnimationFrame(animate);
                 };
                 
-                animate();
+                this.animationId = requestAnimationFrame(animate);
             }
 
             pauseAnimation() {
                 this.isPlaying = false;
                 if (this.animationId) {
-                    clearTimeout(this.animationId);
+                    cancelAnimationFrame(this.animationId);
                     this.animationId = null;
                 }
                 
