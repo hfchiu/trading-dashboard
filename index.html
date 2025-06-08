@@ -670,6 +670,7 @@
             <div class="export-controls">
                 <button class="export-btn" id="exportBtn">📊 Export</button>
                 <button class="comparison-mode" id="comparisonBtn">🔄 Compare</button>
+                <button class="comparison-mode" id="testLLBtn">🧪 Test LL (Frame 115)</button>
             </div>
             <div class="animation-controls">
                 <div class="playback-controls">
@@ -745,6 +746,7 @@
                 document.getElementById('resetBtn').addEventListener('click', () => this.resetAnimation());
                 document.getElementById('exportBtn').addEventListener('click', () => this.exportData());
                 document.getElementById('comparisonBtn').addEventListener('click', () => this.toggleComparisonMode());
+                document.getElementById('testLLBtn').addEventListener('click', () => this.testLLFrame());
                 
                 document.querySelectorAll('.range-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => this.setTimeRange(e.target.dataset.range));
@@ -1468,15 +1470,17 @@
                 const llPeriodItem = document.getElementById('llPeriodItem');
                 const llPeriodStatus = document.getElementById('llPeriodStatus');
                 
-                // Debug logging for every frame to see what's happening
-                if (frameIndex % 100 === 0) { // Log every 100th frame to avoid spam
+                // Enhanced debugging for specific frames
+                if (frameIndex === 114 || frameIndex % 100 === 0 || isLLPeriod) {
                     console.log(`Frame ${frameIndex}: inLL raw=${inLLValue}, type=${typeof inLLValue}, isLLPeriod=${isLLPeriod}`);
+                    console.log('Current data keys:', Object.keys(currentData));
+                    console.log('inLL column exists:', 'inLL' in currentData);
                 }
                 
                 if (isLLPeriod) {
                     llPeriodItem.classList.add('ll-period-active');
                     llPeriodStatus.textContent = 'ACTIVE';
-                    console.log(`LL Period ACTIVE at frame ${frameIndex}, inLL value:`, inLLValue, typeof inLLValue);
+                    console.log(`🟡 LL Period ACTIVE at frame ${frameIndex}, inLL value:`, inLLValue, typeof inLLValue);
                 } else {
                     llPeriodItem.classList.remove('ll-period-active');
                     llPeriodStatus.textContent = 'INACTIVE';
@@ -1690,6 +1694,27 @@
                 };
                 
                 Plotly.newPlot('equityChart', traces, layout, config);
+            }
+
+            testLLFrame() {
+                // Jump to frame 115 where inLL should be 1 according to CSV analysis
+                this.pauseAnimation();
+                this.currentFrame = 114; // 0-based index, so 114 = row 115
+                
+                if (this.currentStrategy) {
+                    this.createCharts();
+                    this.updateStats(this.currentFrame);
+                }
+                
+                // Detailed debugging for this specific frame
+                const frameData = this.data[this.currentFrame];
+                console.log('=== TEST LL FRAME 115 ===');
+                console.log('Frame index:', this.currentFrame);
+                console.log('Frame data:', frameData);
+                console.log('inLL raw value:', frameData.inLL);
+                console.log('inLL type:', typeof frameData.inLL);
+                console.log('checkInLLValue result:', this.checkInLLValue(frameData.inLL));
+                console.log('========================');
             }
 
             getCurrentFrameIndex() {
