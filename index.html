@@ -807,17 +807,23 @@
                     
                     if (header.includes('Exposure')) {
                         const strategyName = header.replace(' Exposure', '').trim();
-                        if (!strategyMap.has(strategyName)) {
-                            strategyMap.set(strategyName, {});
+                        // Only include strategies with "1.2" in the name
+                        if (strategyName.includes('1.2')) {
+                            if (!strategyMap.has(strategyName)) {
+                                strategyMap.set(strategyName, {});
+                            }
+                            strategyMap.get(strategyName).exposureColumn = header;
                         }
-                        strategyMap.get(strategyName).exposureColumn = header;
-                    } else {
+                    } else if (header !== 'inLL') { // Skip inLL column
                         // Assume it's an equity column
                         const strategyName = header.trim();
-                        if (!strategyMap.has(strategyName)) {
-                            strategyMap.set(strategyName, {});
+                        // Only include strategies with "1.2" in the name
+                        if (strategyName.includes('1.2')) {
+                            if (!strategyMap.has(strategyName)) {
+                                strategyMap.set(strategyName, {});
+                            }
+                            strategyMap.get(strategyName).equityColumn = header;
                         }
-                        strategyMap.get(strategyName).equityColumn = header;
                     }
                 }
                 
@@ -832,10 +838,10 @@
                     }
                 }
                 
-                // Fallback for single strategy files
+                // Fallback for single strategy files (only if it contains "1.2")
                 if (this.strategies.length === 0 && headers.includes('Equity') && headers.includes('Exposure')) {
                     this.strategies.push({
-                        name: 'Default Strategy',
+                        name: 'Default Strategy 1.2',
                         equityColumn: 'Equity',
                         exposureColumn: 'Exposure'
                     });
@@ -1130,6 +1136,30 @@
                     margin: { t: 60, b: 40, l: 60, r: 40 }
                 };
 
+                // Add price label annotation if we have data
+                if (endIndex > 0) {
+                    const latestPrice = this.preCalculatedData.candlestick.close[endIndex - 1];
+                    const latestTime = this.preCalculatedData.candlestick.x[endIndex - 1];
+                    
+                    layout.annotations = [{
+                        x: latestTime,
+                        y: latestPrice,
+                        text: `$${latestPrice.toFixed(2)}`,
+                        showarrow: false,
+                        xanchor: 'left',
+                        yanchor: 'middle',
+                        bgcolor: '#ffc107',
+                        bordercolor: '#ffc107',
+                        borderwidth: 1,
+                        font: {
+                            color: '#000000',
+                            size: 12,
+                            family: 'Arial Black'
+                        },
+                        xshift: 10
+                    }];
+                }
+
                 const config = {
                     responsive: true,
                     displayModeBar: true,
@@ -1287,12 +1317,12 @@
                 const newPrice = `$${currentData.close.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 priceElement.textContent = newPrice;
                 
-                // Highlight when exposure is 1.2 (120%) or -1.2 (-120%)
-                const isHighExposure = Math.abs(currentData[this.currentStrategy.exposureColumn]) === 1.2;
+                // Highlight when inLL is 1 (instead of checking exposure = 1.2)
+                const shouldHighlight = currentData.inLL === 1;
                 const exposureItem = document.getElementById('exposureItem');
                 const chartPanels = document.querySelectorAll('.chart-panel');
                 
-                if (isHighExposure) {
+                if (shouldHighlight) {
                     exposureItem.classList.add('exposure-highlight');
                     chartPanels.forEach(panel => panel.classList.add('exposure-highlight'));
                 } else {
