@@ -725,6 +725,11 @@
                 this.animationSpeed = speed;
                 document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('active'));
                 document.querySelector(`[data-speed="${speed}"]`).classList.add('active');
+                
+                // Recalculate frame skip for new speed
+                if (this.data.length > 0) {
+                    this.calculateFrameSkip();
+                }
             }
 
             async loadDefaultData() {
@@ -904,10 +909,13 @@
 
             calculateFrameSkip() {
                 const totalFrames = this.data.length;
-                if (totalFrames > 5000) {
-                    this.frameSkip = Math.ceil(totalFrames / 2000);
-                } else if (totalFrames > 2000) {
-                    this.frameSkip = Math.ceil(totalFrames / 1000);
+                // Adjust frame skip based on speed and data size for consistent performance
+                if (this.animationSpeed >= 15) {
+                    this.frameSkip = Math.max(1, Math.ceil(totalFrames / 1000));
+                } else if (this.animationSpeed >= 10) {
+                    this.frameSkip = Math.max(1, Math.ceil(totalFrames / 1500));
+                } else if (this.animationSpeed >= 5) {
+                    this.frameSkip = Math.max(1, Math.ceil(totalFrames / 2000));
                 } else {
                     this.frameSkip = 1;
                 }
@@ -1031,17 +1039,17 @@
                     text: buySignals.map(() => 'BUY'),
                     textposition: 'bottom center',
                     textfont: {
-                        size: 10,
+                        size: 8,
                         color: '#ffffff',
                         family: 'Arial Black'
                     },
                     marker: {
                         symbol: 'triangle-up',
-                        size: 16,
+                        size: 12,
                         color: '#4caf50',
                         line: {
                             color: '#ffffff',
-                            width: 2
+                            width: 1
                         }
                     }
                 };
@@ -1055,20 +1063,45 @@
                     text: sellSignals.map(() => 'SELL'),
                     textposition: 'top center',
                     textfont: {
-                        size: 10,
+                        size: 8,
                         color: '#ffffff',
                         family: 'Arial Black'
                     },
                     marker: {
                         symbol: 'triangle-down',
-                        size: 16,
+                        size: 12,
                         color: '#f44336',
                         line: {
                             color: '#ffffff',
-                            width: 2
+                            width: 1
                         }
                     }
                 };
+
+                // Add latest price level line
+                const traces = [candlestickTrace, buyTrace, sellTrace];
+                
+                if (endIndex > 0) {
+                    const latestPrice = this.preCalculatedData.candlestick.close[endIndex - 1];
+                    const latestTime = this.preCalculatedData.candlestick.x[endIndex - 1];
+                    const firstTime = this.preCalculatedData.candlestick.x[0];
+                    
+                    const priceLineTrace = {
+                        x: [firstTime, latestTime],
+                        y: [latestPrice, latestPrice],
+                        mode: 'lines',
+                        type: 'scatter',
+                        name: 'Latest Price',
+                        line: {
+                            color: '#ffc107',
+                            width: 2,
+                            dash: 'dash'
+                        },
+                        hovertemplate: `Latest Price: $${latestPrice.toFixed(2)}<extra></extra>`
+                    };
+                    
+                    traces.push(priceLineTrace);
+                }
 
                 const layout = {
                     title: {
@@ -1103,7 +1136,7 @@
                     modeBarButtonsToRemove: ['lasso2d', 'select2d']
                 };
 
-                Plotly.react('candlestickChart', [candlestickTrace, buyTrace, sellTrace], layout, config);
+                Plotly.react('candlestickChart', traces, layout, config);
             }
 
             createEquityChart() {
@@ -1278,48 +1311,46 @@
                 document.getElementById('playBtn').classList.add('play');
                 document.getElementById('playBtn').innerHTML = '⏸ Playing';
                 
-                let lastTime = performance.now();
-                const targetInterval = this.baseInterval / this.animationSpeed;
+                // Use setInterval for consistent timing
+                const intervalMs = this.baseInterval / this.animationSpeed;
                 let frameCount = 0;
                 
-                const animate = (currentTime) => {
-                    if (!this.isPlaying) return;
-                    
-                    const deltaTime = currentTime - lastTime;
-                    
-                    if (deltaTime >= targetInterval) {
-                        if (this.currentFrame < this.data.length - 1) {
-                            this.currentFrame += this.frameSkip;
-                            if (this.currentFrame >= this.data.length) {
-                                this.currentFrame = this.data.length - 1;
-                            }
-                            
-                            // Only update charts every few frames for better performance
-                            frameCount++;
-                            if (frameCount % Math.max(1, Math.floor(this.frameSkip / 2)) === 0) {
-                                this.createCharts();
-                            }
-                            
-                            this.updateStats(this.currentFrame);
-                            
-                            lastTime = currentTime;
-                        } else {
-                            this.pauseAnimation();
-                            return;
-                        }
+                this.animationId = setInterval(() => {
+                    if (!this.isPlaying) {
+                        clearInterval(this.animationId);
+                        return;
                     }
                     
-                    this.animationId = requestAnimationFrame(animate);
-                };
-                
-                this.animationId = requestAnimationFrame(animate);
+                    if (this.currentFrame < this.data.length - 1) {
+                        this.currentFrame += this.frameSkip;
+                        if (this.currentFrame >= this.data.length) {
+                            this.currentFrame = this.data.length - 1;
+                        }
+                        
+                        // Update stats every frame for smooth progress
+                        this.updateStats(this.currentFrame);
+                        
+                        // Update charts less frequently for performance
+                        frameCount++;
+                        if (frameCount % Math.max(1, Math.floor(this.animationSpeed / 5)) === 0) {
+                            this.createCharts();
+                        }
+                    } else {
+                        this.pauseAnimation();
+                    }
+                }, intervalMs);
             }
 
             pauseAnimation() {
                 this.isPlaying = false;
                 if (this.animationId) {
-                    cancelAnimationFrame(this.animationId);
+                    clearInterval(this.animationId);
                     this.animationId = null;
+                }
+                
+                // Ensure final chart update when pausing
+                if (this.currentStrategy) {
+                    this.createCharts();
                 }
                 
                 document.getElementById('playBtn').classList.remove('play');
