@@ -688,8 +688,9 @@
                 this.frameSkip = 1;
                 this.selectedRange = 'all';
                 this.animationSpeed = 10;
-                this.baseInterval = 100;
+                this.baseInterval = 50; // Reduced for smoother animation
                 this.comparisonMode = false;
+                this.preCalculatedData = null; // Cache for pre-calculated chart data
                 
                 this.initializeEventListeners();
                 this.loadDefaultData();
@@ -860,6 +861,7 @@
                 
                 this.detectSignals();
                 this.calculateFrameSkip();
+                this.preCalculateChartData(); // Pre-calculate all chart data
                 this.createCharts();
                 this.updateStats(0);
                 this.resetAnimation();
@@ -934,8 +936,62 @@
                 return this.data.filter(d => d.time >= startDate);
             }
 
-            createCharts() {
+            preCalculateChartData() {
                 if (!this.currentStrategy) return;
+                
+                const filteredData = this.getFilteredData();
+                this.preCalculatedData = {
+                    candlestick: {
+                        x: filteredData.map(d => d.time),
+                        open: filteredData.map(d => d.open),
+                        high: filteredData.map(d => d.high),
+                        low: filteredData.map(d => d.low),
+                        close: filteredData.map(d => d.close)
+                    },
+                    equity: {
+                        x: filteredData.map(d => d.time),
+                        y: filteredData.map(d => d[this.currentStrategy.equityColumn])
+                    },
+                    exposurePositive: {
+                        x: filteredData.map(d => d.time),
+                        y: filteredData.map(d => {
+                            const exp = d[this.currentStrategy.exposureColumn] * 100;
+                            return exp >= 0 ? exp : 0;
+                        })
+                    },
+                    exposureNegative: {
+                        x: filteredData.map(d => d.time),
+                        y: filteredData.map(d => {
+                            const exp = d[this.currentStrategy.exposureColumn] * 100;
+                            return exp < 0 ? -Math.abs(exp) : 0;
+                        })
+                    }
+                };
+                
+                // Pre-filter signals for better performance
+                this.filteredBuySignals = this.filterOverlappingSignals(
+                    this.signals.filter(s => s.type === 'buy')
+                );
+                this.filteredSellSignals = this.filterOverlappingSignals(
+                    this.signals.filter(s => s.type === 'sell')
+                );
+            }
+
+            filterOverlappingSignals(signals) {
+                if (signals.length <= 1) return signals;
+                
+                const filtered = [signals[0]];
+                for (let i = 1; i < signals.length; i++) {
+                    const lastSignal = filtered[filtered.length - 1];
+                    if (signals[i].index - lastSignal.index >= 10) {
+                        filtered.push(signals[i]);
+                    }
+                }
+                return filtered;
+            }
+
+            createCharts() {
+                if (!this.currentStrategy || !this.preCalculatedData) return;
                 
                 this.createCandlestickChart();
                 this.createEquityChart();
@@ -949,49 +1005,30 @@
             }
 
             createCandlestickChart() {
-                const filteredData = this.getFilteredData();
-                const endIndex = Math.min(this.currentFrame + 1, filteredData.length);
-                const displayData = filteredData.slice(0, endIndex);
+                const endIndex = Math.min(this.currentFrame + 1, this.preCalculatedData.candlestick.x.length);
                 
                 const candlestickTrace = {
-                    x: displayData.map(d => d.time),
-                    open: displayData.map(d => d.open),
-                    high: displayData.map(d => d.high),
-                    low: displayData.map(d => d.low),
-                    close: displayData.map(d => d.close),
+                    x: this.preCalculatedData.candlestick.x.slice(0, endIndex),
+                    open: this.preCalculatedData.candlestick.open.slice(0, endIndex),
+                    high: this.preCalculatedData.candlestick.high.slice(0, endIndex),
+                    low: this.preCalculatedData.candlestick.low.slice(0, endIndex),
+                    close: this.preCalculatedData.candlestick.close.slice(0, endIndex),
                     type: 'candlestick',
                     name: 'Price',
                     increasing: { line: { color: '#4caf50' } },
                     decreasing: { line: { color: '#f44336' } }
                 };
 
-                const buySignals = this.signals.filter(s => s.type === 'buy' && s.index < endIndex);
-                const sellSignals = this.signals.filter(s => s.type === 'sell' && s.index < endIndex);
-
-                // Filter signals to reduce overlap - only show signals that are at least 10 data points apart
-                const filterOverlappingSignals = (signals) => {
-                    if (signals.length <= 1) return signals;
-                    
-                    const filtered = [signals[0]];
-                    for (let i = 1; i < signals.length; i++) {
-                        const lastSignal = filtered[filtered.length - 1];
-                        if (signals[i].index - lastSignal.index >= 10) {
-                            filtered.push(signals[i]);
-                        }
-                    }
-                    return filtered;
-                };
-
-                const filteredBuySignals = filterOverlappingSignals(buySignals);
-                const filteredSellSignals = filterOverlappingSignals(sellSignals);
+                const buySignals = this.filteredBuySignals.filter(s => s.index < endIndex);
+                const sellSignals = this.filteredSellSignals.filter(s => s.index < endIndex);
 
                 const buyTrace = {
-                    x: filteredBuySignals.map(s => s.time),
-                    y: filteredBuySignals.map(s => s.price * 0.985),
+                    x: buySignals.map(s => s.time),
+                    y: buySignals.map(s => s.price * 0.985),
                     mode: 'markers+text',
                     type: 'scatter',
                     name: 'Buy Signal',
-                    text: filteredBuySignals.map(() => 'BUY'),
+                    text: buySignals.map(() => 'BUY'),
                     textposition: 'bottom center',
                     textfont: {
                         size: 10,
@@ -1010,12 +1047,12 @@
                 };
 
                 const sellTrace = {
-                    x: filteredSellSignals.map(s => s.time),
-                    y: filteredSellSignals.map(s => s.price * 1.015),
+                    x: sellSignals.map(s => s.time),
+                    y: sellSignals.map(s => s.price * 1.015),
                     mode: 'markers+text',
                     type: 'scatter',
                     name: 'Sell Signal',
-                    text: filteredSellSignals.map(() => 'SELL'),
+                    text: sellSignals.map(() => 'SELL'),
                     textposition: 'top center',
                     textfont: {
                         size: 10,
@@ -1066,19 +1103,15 @@
                     modeBarButtonsToRemove: ['lasso2d', 'select2d']
                 };
 
-                Plotly.newPlot('candlestickChart', [candlestickTrace, buyTrace, sellTrace], layout, config);
+                Plotly.react('candlestickChart', [candlestickTrace, buyTrace, sellTrace], layout, config);
             }
 
             createEquityChart() {
-                if (!this.currentStrategy) return;
-                
-                const filteredData = this.getFilteredData();
-                const endIndex = Math.min(this.currentFrame + 1, filteredData.length);
-                const displayData = filteredData.slice(0, endIndex);
+                const endIndex = Math.min(this.currentFrame + 1, this.preCalculatedData.equity.x.length);
                 
                 const equityTrace = {
-                    x: displayData.map(d => d.time),
-                    y: displayData.map(d => d[this.currentStrategy.equityColumn]),
+                    x: this.preCalculatedData.equity.x.slice(0, endIndex),
+                    y: this.preCalculatedData.equity.y.slice(0, endIndex),
                     type: 'scatter',
                     mode: 'lines',
                     name: 'Equity',
@@ -1114,30 +1147,15 @@
                     displayModeBar: false
                 };
 
-                Plotly.newPlot('equityChart', [equityTrace], layout, config);
+                Plotly.react('equityChart', [equityTrace], layout, config);
             }
 
             createExposureChart() {
-                if (!this.currentStrategy) return;
-                
-                const filteredData = this.getFilteredData();
-                const endIndex = Math.min(this.currentFrame + 1, filteredData.length);
-                const displayData = filteredData.slice(0, endIndex);
-                
-                // Separate positive and negative exposures for better visualization
-                const positiveExposure = displayData.map(d => {
-                    const exp = d[this.currentStrategy.exposureColumn] * 100;
-                    return exp >= 0 ? exp : 0;
-                });
-                
-                const negativeExposure = displayData.map(d => {
-                    const exp = d[this.currentStrategy.exposureColumn] * 100;
-                    return exp < 0 ? Math.abs(exp) : 0;
-                });
+                const endIndex = Math.min(this.currentFrame + 1, this.preCalculatedData.exposurePositive.x.length);
 
                 const positiveTrace = {
-                    x: displayData.map(d => d.time),
-                    y: positiveExposure,
+                    x: this.preCalculatedData.exposurePositive.x.slice(0, endIndex),
+                    y: this.preCalculatedData.exposurePositive.y.slice(0, endIndex),
                     type: 'scatter',
                     mode: 'lines',
                     name: 'Long Exposure',
@@ -1148,8 +1166,8 @@
                 };
 
                 const negativeTrace = {
-                    x: displayData.map(d => d.time),
-                    y: negativeExposure.map(val => -val), // Display as negative
+                    x: this.preCalculatedData.exposureNegative.x.slice(0, endIndex),
+                    y: this.preCalculatedData.exposureNegative.y.slice(0, endIndex),
                     type: 'scatter',
                     mode: 'lines',
                     name: 'Short Exposure',
@@ -1159,9 +1177,9 @@
                     hovertemplate: 'Short: %{y:.1f}%<extra></extra>'
                 };
 
-                // Calculate dynamic range
-                const maxPositive = Math.max(...positiveExposure);
-                const maxNegative = Math.max(...negativeExposure);
+                // Calculate dynamic range from pre-calculated data
+                const maxPositive = Math.max(...this.preCalculatedData.exposurePositive.y);
+                const maxNegative = Math.max(...this.preCalculatedData.exposureNegative.y.map(v => Math.abs(v)));
                 const yRange = Math.max(maxPositive, maxNegative, 120);
 
                 const layout = {
@@ -1200,7 +1218,7 @@
                     displayModeBar: false
                 };
 
-                Plotly.newPlot('exposureChart', [positiveTrace, negativeTrace], layout, config);
+                Plotly.react('exposureChart', [positiveTrace, negativeTrace], layout, config);
             }
 
             updateStats(frameIndex) {
@@ -1262,6 +1280,7 @@
                 
                 let lastTime = performance.now();
                 const targetInterval = this.baseInterval / this.animationSpeed;
+                let frameCount = 0;
                 
                 const animate = (currentTime) => {
                     if (!this.isPlaying) return;
@@ -1275,7 +1294,12 @@
                                 this.currentFrame = this.data.length - 1;
                             }
                             
-                            this.createCharts();
+                            // Only update charts every few frames for better performance
+                            frameCount++;
+                            if (frameCount % Math.max(1, Math.floor(this.frameSkip / 2)) === 0) {
+                                this.createCharts();
+                            }
+                            
                             this.updateStats(this.currentFrame);
                             
                             lastTime = currentTime;
