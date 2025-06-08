@@ -25,34 +25,33 @@
             width: 100vw;
             height: 100vh;
             display: grid;
-            grid-template-rows: auto auto auto auto 1fr;
+            grid-template-rows: auto auto auto 1fr;
             grid-template-areas: 
                 "header"
                 "strategy"
                 "stats"
-                "controls"
                 "charts";
         }
 
         .header {
             grid-area: header;
             background: #1e222d;
-            padding: 10px 20px;
+            padding: 5px 15px;
             border-bottom: 1px solid #2a2e39;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 10px;
         }
 
         .title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 600;
             color: #ffffff;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .timeframe-badge {
@@ -103,11 +102,11 @@
         .strategy-selector {
             grid-area: strategy;
             background: #1e222d;
-            padding: 10px 20px;
+            padding: 5px 15px;
             border-bottom: 1px solid #2a2e39;
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
             flex-wrap: wrap;
         }
 
@@ -144,32 +143,32 @@
         .stats-panel {
             grid-area: stats;
             background: #1e222d;
-            padding: 12px 20px;
+            padding: 5px 15px;
             border-bottom: 1px solid #2a2e39;
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
-            gap: 20px;
+            gap: 10px;
         }
 
         .stat-item {
             text-align: center;
-            padding: 10px;
+            padding: 5px;
             background: #2a2e39;
-            border-radius: 8px;
+            border-radius: 6px;
             border: 2px solid transparent;
         }
 
         .stat-label {
-            font-size: 11px;
+            font-size: 9px;
             color: #787b86;
-            margin-bottom: 6px;
+            margin-bottom: 3px;
             text-transform: uppercase;
             letter-spacing: 1px;
             font-weight: 600;
         }
 
         .stat-value {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: 700;
         }
 
@@ -198,15 +197,20 @@
         }
 
         .controls {
-            grid-area: controls;
-            background: #1e222d;
-            padding: 10px 20px;
-            border-bottom: 1px solid #2a2e39;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(30, 34, 45, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 8px 15px;
+            border-top: 1px solid #2a2e39;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 10px;
+            z-index: 1000;
         }
 
         .range-buttons {
@@ -329,9 +333,10 @@
         .charts-container {
             grid-area: charts;
             display: grid;
-            grid-template-rows: 7fr 4fr 4fr;
-            gap: 5px;
-            padding: 5px;
+            grid-template-rows: 8fr 5fr 5fr;
+            gap: 6px;
+            padding: 6px;
+            padding-bottom: 60px; /* Space for fixed controls */
             background: #131722;
             min-height: 0;
         }
@@ -423,150 +428,137 @@
 
         @media (max-width: 768px) {
             .dashboard {
-                grid-template-rows: auto auto auto 1fr;
+                grid-template-rows: auto auto 1fr;
                 height: 100vh;
                 overflow: hidden;
             }
 
             .header {
-                padding: 3px 8px;
+                padding: 2px 5px;
+                gap: 5px;
             }
 
             .title {
-                font-size: 14px;
+                font-size: 12px;
+                gap: 5px;
             }
 
             .timeframe-badge {
-                font-size: 9px;
-                padding: 1px 4px;
+                font-size: 8px;
+                padding: 1px 3px;
             }
 
             .file-input-label {
-                padding: 6px 10px;
-                font-size: 11px;
+                padding: 4px 8px;
+                font-size: 10px;
             }
 
             .strategy-selector {
-                padding: 3px 8px;
-                gap: 4px;
+                padding: 2px 5px;
+                gap: 3px;
             }
 
             .strategy-label {
-                font-size: 11px;
+                font-size: 10px;
             }
 
             .strategy-dropdown {
-                padding: 4px 6px;
-                font-size: 11px;
+                padding: 3px 5px;
+                font-size: 10px;
                 min-width: auto;
                 width: 100%;
             }
 
             .strategy-info {
-                font-size: 9px;
-                padding: 3px 6px;
+                display: none; /* Hide on mobile to save space */
             }
 
             .stats-panel {
-                grid-template-columns: 1fr 1fr 1fr;
-                gap: 3px;
-                padding: 3px 8px;
-            }
-
-            .stat-item {
-                padding: 4px;
-            }
-
-            .stat-value {
-                font-size: 12px;
-            }
-
-            .stat-label {
-                font-size: 8px;
-                margin-bottom: 2px;
+                display: none; /* Hide stats panel on mobile to maximize chart space */
             }
 
             .controls {
-                padding: 3px 8px;
-                gap: 3px;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: rgba(30, 34, 45, 0.95);
+                backdrop-filter: blur(10px);
+                padding: 2px 5px;
+                gap: 2px;
                 flex-direction: row;
                 flex-wrap: wrap;
                 justify-content: space-between;
                 align-items: center;
+                z-index: 1000;
+                border-top: 1px solid #2a2e39;
             }
 
             .range-buttons {
                 order: 1;
                 display: flex;
-                gap: 2px;
+                gap: 1px;
                 flex: 1;
             }
 
             .export-controls {
-                order: 2;
-                gap: 3px;
-                display: none; /* Hide export controls on mobile to save space */
+                display: none; /* Hide export controls on mobile */
             }
 
             .animation-controls {
                 order: 3;
-                gap: 3px;
+                gap: 2px;
                 flex-direction: row;
                 align-items: center;
-                flex: 2;
+                flex: 1;
                 justify-content: flex-end;
             }
 
             .playback-controls {
-                gap: 3px;
-            }
-
-            .control-btn {
-                padding: 3px 6px;
-                font-size: 9px;
-            }
-
-            .speed-controls {
-                padding: 2px 4px;
                 gap: 2px;
             }
 
-            .speed-label {
+            .control-btn {
+                padding: 2px 4px;
                 font-size: 8px;
+            }
+
+            .speed-controls {
+                padding: 1px 3px;
+                gap: 1px;
+            }
+
+            .speed-label {
+                font-size: 7px;
             }
 
             .speed-btn {
-                padding: 1px 3px;
-                font-size: 7px;
-                min-width: 18px;
+                padding: 1px 2px;
+                font-size: 6px;
+                min-width: 16px;
             }
 
             .range-btn {
-                padding: 3px 6px;
-                font-size: 9px;
+                padding: 2px 4px;
+                font-size: 8px;
                 flex: 1;
             }
 
-            .export-btn, .comparison-mode {
-                padding: 3px 5px;
-                font-size: 8px;
-            }
-
             .progress-info {
-                font-size: 8px;
-                padding: 2px 4px;
+                display: none; /* Hide progress info on mobile */
             }
 
             .charts-container {
-                grid-template-rows: 3fr 1.5fr 1.5fr;
+                grid-template-rows: 4fr 2fr 2fr;
                 gap: 1px;
                 padding: 1px;
+                padding-bottom: 35px; /* Space for fixed controls */
                 min-height: 0;
                 height: 100%;
             }
 
             .chart-panel {
-                min-height: 100px;
+                min-height: 80px;
             }
 
             .chart-content {
@@ -574,18 +566,14 @@
                 width: 100%;
             }
 
-            /* Hide some elements on very small screens */
+            /* Hide even more on very small screens */
             @media (max-width: 480px) {
-                .strategy-info {
-                    display: none;
-                }
-                
                 .speed-controls {
                     display: none;
                 }
                 
-                .progress-info {
-                    display: none;
+                .charts-container {
+                    padding-bottom: 30px;
                 }
             }
         }
