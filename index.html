@@ -778,7 +778,15 @@
                     
                     // Add all other columns dynamically
                     for (let i = 5; i < headers.length; i++) {
-                        row[headers[i]] = parseFloat(values[i]);
+                        const header = headers[i];
+                        const value = values[i];
+                        
+                        // Special handling for inLL column to ensure it's a number
+                        if (header === 'inLL') {
+                            row[header] = parseFloat(value) || 0;
+                        } else {
+                            row[header] = parseFloat(value);
+                        }
                     }
                     
                     return row;
@@ -1205,6 +1213,30 @@
                     margin: { t: 60, b: 40, l: 60, r: 40 }
                 };
 
+                // Add equity label annotation if we have data
+                if (endIndex > 0) {
+                    const latestEquity = this.preCalculatedData.equity.y[endIndex - 1];
+                    const latestTime = this.preCalculatedData.equity.x[endIndex - 1];
+                    
+                    layout.annotations = [{
+                        x: latestTime,
+                        y: latestEquity,
+                        text: `$${latestEquity.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+                        showarrow: false,
+                        xanchor: 'left',
+                        yanchor: 'middle',
+                        bgcolor: '#4caf50',
+                        bordercolor: '#4caf50',
+                        borderwidth: 1,
+                        font: {
+                            color: '#ffffff',
+                            size: 12,
+                            family: 'Arial Black'
+                        },
+                        xshift: 10
+                    }];
+                }
+
                 const config = {
                     responsive: true,
                     displayModeBar: false
@@ -1317,8 +1349,9 @@
                 const newPrice = `$${currentData.close.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 priceElement.textContent = newPrice;
                 
-                // Highlight when inLL is 1 (instead of checking exposure = 1.2)
-                const shouldHighlight = currentData.inLL === 1;
+                // Highlight when inLL is 1 (check both number and string values)
+                const inLLValue = currentData.inLL;
+                const shouldHighlight = inLLValue === 1 || inLLValue === '1' || inLLValue === 1.0;
                 const exposureItem = document.getElementById('exposureItem');
                 const chartPanels = document.querySelectorAll('.chart-panel');
                 
